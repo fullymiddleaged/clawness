@@ -1,0 +1,14 @@
+id: GEN-ABSTRACTION-001
+domain: general
+severity: warning
+tags: [abstraction, yagni, premature, simplicity, over-engineering, dry]
+triggers: [abstract, interface, factory, generic, wrapper, refactor]
+when: Adding an abstraction, layer, generic, or configuration option.
+rule: >
+  Don't abstract until the need is real. Prefer simple, direct code and add
+  an abstraction only when it removes actual duplication (rule of three) or
+  delivers a measurable performance or clarity win. Speculative
+  flexibility, deep inheritance, and "might need it later" indirection cost
+  more than the duplication they claim to prevent.
+violation: "AbstractStrategyFactoryProvider for a feature with one implementation"
+correct: "Write the concrete code; extract an abstraction when the 2nd/3rd case appears"

@@ -1,0 +1,13 @@
+id: SH-STRICT-001
+domain: bash
+severity: error
+tags: [strict-mode, errexit, pipefail, nounset, safety]
+triggers: ["#!/bin/bash", "#!/usr/bin/env bash", set, script, "set -e"]
+when: Writing a shell script.
+rule: >
+  Start scripts with strict mode: set -euo pipefail. -e exits on the first
+  failed command, -u errors on unset variables, and -o pipefail makes a
+  pipeline fail if any stage fails. Without it scripts silently continue
+  after errors and run later commands on bad state.
+violation: "#!/bin/bash\ncd \"$DIR\"\nrm -rf ./*   # if cd failed, deletes the wrong directory"
+correct: "#!/usr/bin/env bash\nset -euo pipefail\ncd \"$DIR\"\nrm -rf ./*"

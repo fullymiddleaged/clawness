@@ -1,0 +1,14 @@
+id: NX-META-001
+domain: nextjs
+severity: warning
+tags: [metadata, SEO, title, description, og, opengraph, head, sitemap]
+triggers: [metadata, title, description, SEO, head, og, opengraph, generateMetadata, sitemap]
+when: Setting page titles, descriptions, or SEO metadata.
+rule: >
+  Use the Metadata API (export const metadata or generateMetadata for
+  dynamic routes) instead of manual <head> tags. Every page should have
+  a unique title and description. Use generateMetadata when metadata
+  depends on route params or fetched data. Add OpenGraph images for
+  social sharing. Create a sitemap.ts and robots.ts in the app root.
+violation: "Manually adding <title> in a <head> tag or missing page metadata"
+correct: "export const metadata: Metadata = { title: '...', description: '...' }"

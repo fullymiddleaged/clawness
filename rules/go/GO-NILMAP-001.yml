@@ -1,0 +1,12 @@
+id: GO-NILMAP-001
+domain: go
+severity: error
+tags: [maps, nil, panic, initialization, slices]
+triggers: [map, make, "map[", nil, append]
+when: Declaring or writing to a map.
+rule: >
+  A nil map can be read but writing to it panics at runtime. Initialize
+  maps with make() or a literal before assigning keys. (Nil slices are
+  fine to append to — the asymmetry trips people up.)
+violation: "var m map[string]int; m[\"x\"] = 1  // panic: assignment to entry in nil map"
+correct: "m := make(map[string]int); m[\"x\"] = 1"

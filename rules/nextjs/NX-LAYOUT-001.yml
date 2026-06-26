@@ -1,0 +1,16 @@
+id: NX-LAYOUT-001
+domain: nextjs
+severity: warning
+tags: [layout, template, root-layout, nested-layout, providers, shared-ui]
+triggers: [layout, template, RootLayout, providers, header, footer, sidebar, nav, wrapper]
+when: Creating shared UI structure or wrapping pages with providers.
+rule: >
+  Use layout.tsx for persistent shared UI (header, sidebar, nav) that
+  should not remount between navigations. Place global providers
+  (ThemeProvider, QueryClientProvider) in the root layout. Use
+  template.tsx instead of layout when you need the component to remount
+  on every navigation (e.g. enter animations, per-page state reset).
+  Layouts are Server Components — wrap only the interactive provider in
+  'use client', not the entire layout.
+violation: "Putting 'use client' on root layout.tsx to use ThemeProvider"
+correct: "Create a separate 'use client' Providers component, import it in Server layout"

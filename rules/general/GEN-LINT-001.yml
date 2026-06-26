@@ -1,0 +1,15 @@
+id: GEN-LINT-001
+domain: general
+severity: warning
+tags: [linting, formatting, prettier, eslint, formatter, style, ci, type-safety]
+triggers: [lint, eslint, prettier, format, black, gofmt, "any"]
+when: Writing code in a project that has a linter or formatter configured.
+rule: >
+  Respect the project's linter and formatter: run them (or enable
+  format-on-save) and don't introduce new warnings. Let an autoformatter
+  (Prettier, Black, gofmt, rustfmt) own style so review effort goes to
+  logic, not whitespace. Don't blanket-disable rules — suppress a single
+  line with a comment saying why. In typed languages avoid escape hatches
+  like `any` or `@ts-ignore` unless genuinely justified.
+violation: "/* eslint-disable */ at the top of the file to silence everything"
+correct: "// eslint-disable-next-line no-eval -- input is sandboxed, see SEC-123"

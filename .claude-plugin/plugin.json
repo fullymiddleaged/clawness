@@ -1,0 +1,90 @@
+{
+  "name": "clawness",
+  "version": "0.2.0",
+  "description": "Lightweight hybrid rule retrieval based harness for Claude Code. 106 rules across 15 domains, per-prompt rule injection (BM25 + TF-IDF + concept expansion, optional model2vec embeddings), Bash-output compression, adversarial sub-agents, slash commands, and an opt-in plan-approval gate. No Docker, no services.",
+  "author": {
+    "name": "fullymiddleaged"
+  },
+  "homepage": "https://github.com/fullymiddleaged/clawness",
+  "repository": "https://github.com/fullymiddleaged/clawness",
+  "license": "MIT",
+  "keywords": [
+    "rules",
+    "retrieval",
+    "rag",
+    "hooks",
+    "coding-standards",
+    "security",
+    "code-review",
+    "plan-mode",
+    "multi-agent"
+  ],
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/ensure_deps.py\"",
+            "async": true,
+            "timeout": 600
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/git_check.py\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/claude_hook.py\"",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/compress_output.py\"",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "ExitPlanMode",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/plan_gate.py\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/plan_gate.py\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

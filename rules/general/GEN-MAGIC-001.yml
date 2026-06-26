@@ -1,0 +1,13 @@
+id: GEN-MAGIC-001
+domain: general
+severity: info
+tags: [magic-numbers, constants, readability, configuration, literals]
+triggers: [constant, magic, hardcoded, number, literal]
+when: Using a literal number or string whose meaning isn't obvious.
+rule: >
+  Replace unexplained literals with named constants. A bare 86400, 0.15, or
+  "PENDING" makes the reader guess intent and forces a hunt for every copy
+  when it changes. Name it once (SECONDS_PER_DAY, TAX_RATE, Status.PENDING)
+  so meaning is local and edits happen in one place.
+violation: "if (elapsed > 86400) { ... }   // 86400 what? seconds? duplicated where?"
+correct: "const SECONDS_PER_DAY = 86_400; if (elapsed > SECONDS_PER_DAY) { ... }"

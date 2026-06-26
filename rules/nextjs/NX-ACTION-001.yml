@@ -1,0 +1,14 @@
+id: NX-ACTION-001
+domain: nextjs
+severity: warning
+tags: [server-actions, forms, mutations, use-server, revalidate]
+triggers: [use server, action, form, submit, create, update, delete, mutation, revalidatePath, revalidateTag]
+when: Handling form submissions or data mutations.
+rule: >
+  Use Server Actions for form mutations (create, update, delete). Define
+  them with 'use server' in a separate actions file. After mutating data,
+  call revalidatePath or revalidateTag to refresh cached data. Do NOT use
+  Server Actions for complex API logic, custom HTTP status codes, or
+  non-form programmatic calls — use Route Handlers for those.
+violation: "Creating a POST API route just to handle a form submission"
+correct: "'use server' action that writes to DB then calls revalidatePath('/dashboard')"

@@ -1,0 +1,15 @@
+id: NX-ROUTE-001
+domain: nextjs
+severity: info
+tags: [route-handler, API, endpoint, webhook, REST, GET, POST]
+triggers: [route.ts, route.js, NextResponse, NextRequest, API, webhook, endpoint, GET, POST, PUT, DELETE]
+when: Creating API endpoints in a Next.js App Router project.
+rule: >
+  Use Route Handlers (route.ts in app/) for API endpoints consumed by
+  external services, webhooks, file downloads, or when you need full
+  control over HTTP response headers and status codes. Use them for
+  client-side fetches from 'use client' components. Do NOT create a
+  Route Handler when a Server Action would suffice (form submissions,
+  simple mutations).
+violation: "Creating /api/create-todo/route.ts for a simple form POST"
+correct: "Server Action for the form; Route Handler for the Stripe webhook"

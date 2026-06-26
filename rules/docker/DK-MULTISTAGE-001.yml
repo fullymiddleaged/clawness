@@ -1,0 +1,13 @@
+id: DK-MULTISTAGE-001
+domain: docker
+severity: warning
+tags: [multi-stage, image-size, build-tools, optimization, attack-surface]
+triggers: [FROM, AS, build, multi-stage, stage]
+when: Building an application that needs compilers or build tooling.
+rule: >
+  Use multi-stage builds: compile in one stage, then copy only the
+  resulting artifacts into a minimal runtime image. This keeps build tools,
+  dev dependencies, and source out of the final image — smaller, faster to
+  pull, and a smaller attack surface.
+violation: "single stage ships node_modules, compilers, and source to production"
+correct: "FROM node AS build ...; FROM node:slim; COPY --from=build /app/dist ./dist"

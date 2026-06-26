@@ -1,0 +1,11 @@
+id: PY-IMPORT-001
+domain: python
+severity: warning
+tags: [imports, ordering, style, isort]
+triggers: [import, from, module]
+when: Adding or reorganizing import statements at the top of a Python file.
+rule: >
+  Imports follow isort order: stdlib, blank line, third-party, blank line,
+  local. Within each group, sort alphabetically. Avoid wildcard imports.
+violation: "from utils import *  then  import os  below  import flask"
+correct: "import os\\nfrom pathlib import Path\\n\\nimport flask\\n\\nfrom myapp.utils import helper"

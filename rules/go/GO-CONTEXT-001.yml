@@ -1,0 +1,13 @@
+id: GO-CONTEXT-001
+domain: go
+severity: warning
+tags: [context, cancellation, timeout, io]
+triggers: [context, ctx, "context.Context", WithCancel, WithTimeout]
+when: Writing functions that do I/O, block, or may need cancellation.
+rule: >
+  Pass context.Context as the first parameter and honor its cancellation —
+  do not store it in a struct field. Always call the cancel function
+  (defer cancel()) returned by WithCancel/WithTimeout, or you leak the
+  timer and any goroutines waiting on it.
+violation: "func Fetch(url string) error {...}  // no ctx; cannot cancel or time out"
+correct: "func Fetch(ctx context.Context, url string) error { ... }"

@@ -1,0 +1,13 @@
+id: ENF-SEC-003
+domain: security
+severity: error
+tags: [xss, sanitize, html, injection, escape, dangerouslySetInnerHTML]
+triggers: [innerHTML, dangerouslySetInnerHTML, html, template, render, sanitize]
+when: Rendering any user-supplied content in HTML or JSX.
+rule: >
+  Never render unsanitized user input as HTML. In React, avoid
+  dangerouslySetInnerHTML unless the content has been sanitized with a
+  library like DOMPurify. Always escape template variables in server-side
+  rendered HTML. Treat all user input as untrusted.
+violation: "dangerouslySetInnerHTML={{ __html: userComment }}"
+correct: "dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(userComment) }}"

@@ -1,0 +1,16 @@
+id: GEN-DEPS-001
+domain: general
+severity: warning
+tags: [dependencies, libraries, packages, maintenance, supply-chain, minimize]
+triggers: [dependency, package, library, install, npm, pip, import, third-party, maintained, choose]
+when: Adding a third-party dependency or choosing between competing libraries.
+rule: >
+  Prefer well-supported libraries and add them sparingly. Judge health by
+  recent commit activity, issue/PR responsiveness, maintainer backing,
+  documentation, test coverage, license, and number of transitive
+  dependencies — GitHub stars are a useful popularity signal but not proof
+  on their own (publicity and age inflate them). Don't pull in a package
+  for something you can write in a few lines, and remove dependencies that
+  are unmaintained or have known vulnerabilities.
+violation: "npm install left-pad   // a one-line utility taken on as a dependency"
+correct: "Check activity, open issues, license, and transitive deps; add a maintained lib only when it earns its weight"

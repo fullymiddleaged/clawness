@@ -1,0 +1,14 @@
+id: NX-IMAGE-001
+domain: nextjs
+severity: warning
+tags: [image, optimization, next-image, lazy-loading, LCP, performance, webp]
+triggers: [img, Image, image, photo, picture, avatar, thumbnail, hero, banner]
+when: Displaying any image in a Next.js application.
+rule: >
+  Always use next/image instead of plain <img> tags. It handles lazy
+  loading, responsive sizing, format conversion (WebP/AVIF), and caching
+  automatically. Always provide width and height (or use fill with a
+  sized parent). Set priority on above-the-fold hero images to improve
+  LCP. Configure remotePatterns in next.config for external image domains.
+violation: "<img src='/photo.jpg' /> with no optimization"
+correct: "import Image from 'next/image'; <Image src='/photo.jpg' width={800} height={600} alt='...' />"

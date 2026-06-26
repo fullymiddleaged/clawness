@@ -1,0 +1,14 @@
+id: ENF-CURRENT-001
+domain: general
+severity: error
+tags: [current, modern, up-to-date, deprecated, legacy, best-practice]
+triggers: [install, create, init, scaffold, setup, boilerplate, starter, template]
+when: Writing any new code, choosing libraries, or suggesting patterns.
+rule: >
+  Always use current best practices for the present month and year.
+  Never suggest deprecated APIs, abandoned libraries, or legacy patterns.
+  If unsure whether something is current, check — do not guess. Prefer
+  the official documentation's recommended approach over blog posts or
+  Stack Overflow answers that may be outdated.
+violation: "Using Pages Router for a new Next.js project, or class components in React"
+correct: "Using App Router with Server Components, or functional components with hooks"

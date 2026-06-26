@@ -1,0 +1,13 @@
+id: GEN-NESTING-001
+domain: general
+severity: warning
+tags: [readability, guard-clause, early-return, nesting, function-size]
+triggers: [if, else, nested, indentation, "return"]
+when: A function grows deeply nested or hard to follow.
+rule: >
+  Cut nesting with guard clauses and early returns: handle errors and edge
+  cases up front, then let the happy path run at the top indentation level.
+  Keep functions small and single-purpose — if you can't see the whole
+  function at once, or can't name it without "and", split it.
+violation: "if (ok) { if (valid) { if (found) { ...happy path buried 3 levels deep... }}}"
+correct: "if (!ok) return; if (!valid) return; if (!found) return; ...happy path..."

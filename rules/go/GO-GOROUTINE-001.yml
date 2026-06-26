@@ -1,0 +1,13 @@
+id: GO-GOROUTINE-001
+domain: go
+severity: warning
+tags: [goroutine, concurrency, leak, lifecycle, errgroup, waitgroup]
+triggers: [go, goroutine, "go func", chan, WaitGroup, errgroup]
+when: Starting a goroutine.
+rule: >
+  Every goroutine needs a defined way to stop and a way to surface its
+  errors. Use context for cancellation and sync.WaitGroup or
+  golang.org/x/sync/errgroup to wait for completion and collect errors.
+  A fire-and-forget goroutine with no exit path is a leak.
+violation: "go process(item)  // fire-and-forget: leaks on shutdown, errors lost"
+correct: "g, ctx := errgroup.WithContext(ctx); g.Go(func() error { return process(ctx, item) }); err := g.Wait()"

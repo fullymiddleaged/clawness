@@ -1,0 +1,13 @@
+id: PY-PATHLIB-001
+domain: python
+severity: info
+tags: [pathlib, paths, os-path, filesystem, portability]
+triggers: ["os.path", path, join, pathlib, Path]
+when: Building, joining, or manipulating filesystem paths.
+rule: >
+  Prefer pathlib.Path over os.path string operations. Path objects are
+  cross-platform, compose with the / operator, and expose read_text, glob,
+  mkdir, and suffix/stem helpers that eliminate manual string munging and
+  path-separator bugs.
+violation: "cfg = os.path.join(base_dir, 'conf', name + '.yml')"
+correct: "cfg = Path(base_dir) / 'conf' / f'{name}.yml'"

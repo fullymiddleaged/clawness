@@ -1,0 +1,13 @@
+id: DK-TAG-001
+domain: docker
+severity: warning
+tags: [base-image, tags, latest, reproducibility, pinning]
+triggers: [FROM, "latest", tag, version, digest]
+when: Choosing a base image.
+rule: >
+  Pin base images to a specific version tag (ideally plus a digest) instead
+  of :latest. :latest is a moving target that makes builds
+  non-reproducible and can silently pull breaking changes or new
+  vulnerabilities. Bump pinned versions deliberately.
+violation: "FROM node:latest   // today's build != next week's build"
+correct: "FROM node:20.11-slim   // or FROM node:20.11-slim@sha256:..."

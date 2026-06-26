@@ -1,0 +1,13 @@
+id: ENF-SEC-005
+domain: security
+severity: error
+tags: [dependencies, supply-chain, npm, vulnerabilities, audit, packages]
+triggers: [npm install, npm add, pnpm add, yarn add, package, dependency]
+when: Adding any new dependency to a project.
+rule: >
+  Before adding a dependency, check its maintenance status, download count,
+  last publish date, and known vulnerabilities. Prefer well-maintained
+  packages with active contributors. Run npm audit or equivalent regularly.
+  Pin major versions. Never install packages with known critical CVEs.
+violation: "npm install random-unmaintained-package without checking it"
+correct: "Verify package health on npm, check GitHub issues, then add with pinned version"

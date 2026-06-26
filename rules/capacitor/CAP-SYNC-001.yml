@@ -1,0 +1,15 @@
+id: CAP-SYNC-001
+domain: capacitor
+severity: info
+tags: [sync, build, copy, capacitor-config, native, deploy, npx]
+triggers: [sync, build, copy, cap, npx, capacitor.config, native, open, run]
+when: Building or deploying a Capacitor app.
+rule: >
+  Run 'npx cap sync' after every web build and after adding or removing
+  plugins — it copies web assets AND updates native deps. Use 'npx cap
+  copy' for web-only changes (faster). Use 'npx cap open ios' or
+  'npx cap open android' to launch the native IDE. Configure
+  capacitor.config.ts (not .json) for type safety. Always test on real
+  devices — emulators miss push notifications and biometrics edge cases.
+violation: "Building web app but forgetting npx cap sync — native app shows old code"
+correct: "npm run build && npx cap sync && npx cap open ios"

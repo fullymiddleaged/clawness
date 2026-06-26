@@ -1,0 +1,15 @@
+id: NX-CACHE-001
+domain: nextjs
+severity: warning
+tags: [caching, revalidation, ISR, static, dynamic, stale, cache, no-store, tags]
+triggers: [cache, revalidate, static, dynamic, ISR, stale, no-store, fetch, tags, force-dynamic]
+when: Configuring caching or revalidation for data fetching.
+rule: >
+  Prefer static rendering by default — it is faster and cheaper. Use
+  next.revalidate for time-based revalidation (ISR). Use next.tags with
+  revalidateTag for on-demand invalidation after writes. Use cache
+  no-store only when data must be fresh on every single request. Avoid
+  force-dynamic on entire routes — use Suspense to stream dynamic parts
+  within a mostly-static shell.
+violation: "export const dynamic = 'force-dynamic' on a page that updates once a day"
+correct: "fetch(url, { next: { revalidate: 3600, tags: ['products'] } })"

@@ -1,0 +1,13 @@
+id: TS-STRICT-001
+domain: typescript
+severity: warning
+tags: [strict, tsconfig, any, unknown, type-safety, configuration]
+triggers: [tsconfig, strict, any, unknown, noImplicitAny, strictNullChecks, type]
+when: Configuring TypeScript or using type assertions.
+rule: >
+  Enable strict mode in tsconfig.json (strict: true). Never use 'any'
+  as a type — use 'unknown' and narrow with type guards when the type
+  is genuinely not known. Avoid type assertions (as) when a type guard
+  or generic would be safer. Treat TypeScript errors as bugs, not noise.
+violation: "const data: any = response.json()  or  strict: false in tsconfig"
+correct: "const data: unknown = await response.json(); if (isUser(data)) { ... }"

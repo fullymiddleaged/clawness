@@ -1,0 +1,13 @@
+id: SQL-INDEX-001
+domain: sql
+severity: warning
+tags: [indexes, performance, where, join, foreign-key, explain]
+triggers: [index, where, join, "order by", "foreign key", slow]
+when: Adding a query that filters, joins, or sorts on a column.
+rule: >
+  Index the columns used in WHERE, JOIN, and ORDER BY — especially foreign
+  keys, which many databases do not index automatically. Confirm with
+  EXPLAIN / EXPLAIN ANALYZE, and put composite-index columns in the order
+  they are filtered. Don't over-index write-heavy tables.
+violation: "SELECT * FROM orders WHERE customer_id = ?  -- no index on customer_id"
+correct: "CREATE INDEX idx_orders_customer ON orders(customer_id);"

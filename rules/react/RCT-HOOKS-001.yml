@@ -1,0 +1,14 @@
+id: RCT-HOOKS-001
+domain: react
+severity: error
+tags: [hooks, useEffect, useState, useCallback, dependencies, rules-of-hooks]
+triggers: [useEffect, useState, useCallback, useMemo, useRef, hook, dependency, deps]
+when: Writing or modifying React hooks.
+rule: >
+  Follow the Rules of Hooks: only call hooks at the top level, never
+  inside conditions, loops, or nested functions. Always include all
+  referenced values in dependency arrays. Use useCallback for functions
+  passed as dependencies. Never suppress the exhaustive-deps lint rule.
+  Return a cleanup function from useEffect for subscriptions and timers.
+violation: "useEffect(() => { fetchUser(userId) }, [])  // missing userId dep"
+correct: "useEffect(() => { fetchUser(userId) }, [userId])"

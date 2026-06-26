@@ -1,0 +1,13 @@
+id: GO-ERROR-001
+domain: go
+severity: error
+tags: [errors, error-handling, wrapping, panic, defer]
+triggers: [err, error, "if err != nil", panic, recover, "%w"]
+when: A function returns an error value.
+rule: >
+  Check every returned error — never discard it with _. Add context when
+  propagating using fmt.Errorf with %w so callers can errors.Is / errors.As
+  it. Reserve panic for truly unrecoverable programmer errors, not normal
+  control flow.
+violation: "data, _ := os.ReadFile(path)  // error silently dropped"
+correct: "data, err := os.ReadFile(path); if err != nil { return fmt.Errorf(\"read config: %w\", err) }"

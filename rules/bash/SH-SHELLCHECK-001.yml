@@ -1,0 +1,13 @@
+id: SH-SHELLCHECK-001
+domain: bash
+severity: info
+tags: [shellcheck, linting, portability, best-practices]
+triggers: [shellcheck, "[ ", "[[", ls, backtick]
+when: Authoring or reviewing shell scripts.
+rule: >
+  Run shellcheck — it catches quoting, portability, and logic bugs
+  automatically. In bash prefer [[ ]] over [ ], use $(...) over backticks,
+  and never parse the output of ls; iterate with globs or
+  'find ... -print0 | while IFS= read -r -d ""'.
+violation: "for f in `ls *.txt`; do ...   # breaks on spaces/newlines in names"
+correct: "for f in *.txt; do [[ -e \"$f\" ]] || continue; ...; done"

@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=77.0.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "clawness"
+version = "0.2.0"
+description = "Lightweight hybrid rule retrieval for AI coding agents"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.10"
+dependencies = [
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+# Enables the semantic (vector) ranker. Lexical + concept retrieval works
+# without it; install to add model2vec static embeddings (numpy-only).
+semantic = [
+    "model2vec>=0.3",
+    "numpy>=1.24",
+]
+
+[project.scripts]
+clawness = "writ_lite.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["writ_lite*"]

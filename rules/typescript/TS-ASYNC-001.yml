@@ -1,0 +1,12 @@
+id: TS-ASYNC-001
+domain: typescript
+severity: error
+tags: [async, promise, error-handling, await, unhandled]
+triggers: [async, await, Promise, .then, .catch, fetch]
+when: Writing async functions or working with Promises.
+rule: >
+  Every await must be in a try/catch or the promise chain must have .catch().
+  Unhandled promise rejections crash Node and silently fail in browsers.
+  Prefer async/await over .then() chains for readability.
+violation: "const data = await fetch(url);  // no try/catch"
+correct: "try { const data = await fetch(url); } catch (e) { handleFetchError(e); }"

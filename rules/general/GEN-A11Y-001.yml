@@ -1,0 +1,15 @@
+id: GEN-A11Y-001
+domain: general
+severity: warning
+tags: [accessibility, a11y, aria, screen-reader, keyboard, semantic, alt-text]
+triggers: [aria, role, alt, label, accessibility, a11y, tabIndex, keyboard, semantic, screen-reader]
+when: Building any user-facing UI component.
+rule: >
+  Use semantic HTML elements (button, nav, main, article) instead of
+  divs with roles. Every image needs meaningful alt text (or alt="" for
+  decorative images). All interactive elements must be keyboard
+  accessible. Form inputs need associated labels. Test with a screen
+  reader. Color contrast must meet WCAG AA (4.5:1 for text). Never
+  remove focus outlines without providing an alternative.
+violation: "<div onClick={handler}>Click me</div> with no keyboard support"
+correct: "<button onClick={handler}>Click me</button>"

@@ -1,0 +1,11 @@
+id: PY-ASYNC-001
+domain: python
+severity: error
+tags: [async, io, concurrency, blocking, event-loop]
+triggers: [async def, await, asyncio, aiohttp, httpx, requests]
+when: Calling a synchronous I/O function inside an async def function.
+rule: >
+  Async call chains must use async I/O end-to-end. A single sync call
+  blocks the event loop and defeats the purpose of async.
+violation: "Using requests.get() inside an async def handler"
+correct: "Using httpx.AsyncClient or aiohttp.ClientSession within async context"

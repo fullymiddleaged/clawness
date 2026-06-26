@@ -1,0 +1,11 @@
+id: ENF-SEC-002
+domain: security
+severity: error
+tags: [sql, injection, parameterized, query, database]
+triggers: [query, execute, sql, cursor, SELECT, INSERT, UPDATE, DELETE]
+when: Building any SQL query that includes user-supplied values.
+rule: >
+  Always use parameterized queries or prepared statements.
+  Never concatenate or f-string user input into SQL.
+violation: "cursor.execute(f\"SELECT * FROM users WHERE id = {user_id}\")"
+correct: "cursor.execute(\"SELECT * FROM users WHERE id = %s\", (user_id,))"

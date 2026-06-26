@@ -1,0 +1,13 @@
+id: SH-CHECK-001
+domain: bash
+severity: warning
+tags: [error-checking, exit-code, traps, cleanup, robustness]
+triggers: ["$?", trap, "||", "&&", exit, cd]
+when: Running commands whose failure should stop the script or trigger cleanup.
+rule: >
+  Don't assume commands succeed. Guard ones that may legitimately fail with
+  'cmd || handle', verify 'cd' before destructive operations, and use
+  'trap cleanup EXIT' to remove temp files on any exit path (including
+  errors and signals).
+violation: "cd /tmp/build; make clean   # runs in the wrong dir if cd fails"
+correct: "cd /tmp/build || exit 1; trap 'rm -rf \"$tmp\"' EXIT"

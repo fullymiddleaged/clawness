@@ -1,0 +1,15 @@
+id: NX-SERVER-001
+domain: nextjs
+severity: error
+tags: [server-components, client-components, use-client, RSC, bundle-size]
+triggers: [use client, component, server, client, onClick, useState, useEffect, interactive]
+when: Deciding whether a component should be a Server or Client Component.
+rule: >
+  Components are Server Components by default — keep them that way unless
+  they need interactivity, browser APIs, or React hooks (useState,
+  useEffect, etc.). Only add 'use client' to the specific component that
+  needs it. Push the client boundary as close to the leaf as possible.
+  Never mark a layout or page as 'use client' just because a child needs
+  interactivity — wrap only that child.
+violation: "Adding 'use client' to page.tsx because it contains a LikeButton"
+correct: "Keep page.tsx as Server Component, add 'use client' only to LikeButton"

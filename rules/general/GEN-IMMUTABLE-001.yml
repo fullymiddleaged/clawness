@@ -1,0 +1,13 @@
+id: GEN-IMMUTABLE-001
+domain: general
+severity: warning
+tags: [immutability, side-effects, mutation, pure-functions, shared-state]
+triggers: [mutate, global, side-effect, modify, reassign]
+when: A function modifies data it did not create.
+rule: >
+  Avoid mutating shared state or caller-owned inputs — it causes
+  action-at-a-distance bugs that are hard to trace. Prefer pure functions
+  that take inputs and return new values; if you must mutate, keep it local
+  to data the function owns. Keep side effects explicit and few.
+violation: "def normalize(items): items.sort()   // mutates the caller's list in place"
+correct: "def normalize(items): return sorted(items)   // returns a new list"

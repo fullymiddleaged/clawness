@@ -1,0 +1,13 @@
+id: CSS-LAYOUT-001
+domain: css
+severity: warning
+tags: [layout, flexbox, grid, float, positioning]
+triggers: [float, position, flex, grid, layout]
+when: Building page or component layout.
+rule: >
+  Use Flexbox for one-dimensional layouts and CSS Grid for two-dimensional
+  ones. Avoid float-based layouts and absolute-positioning hacks for
+  structure — they are fragile and hard to make responsive. Keep
+  position: absolute for genuine overlays only.
+violation: "float: left; width: 33%;   // clearfix hacks, breaks on wrap"
+correct: "display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;"

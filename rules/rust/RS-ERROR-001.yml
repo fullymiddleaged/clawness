@@ -1,0 +1,12 @@
+id: RS-ERROR-001
+domain: rust
+severity: error
+tags: [errors, result, thiserror, anyhow, context]
+triggers: [Result, Error, thiserror, anyhow, "Box<dyn Error>"]
+when: Defining error types or propagating errors across functions.
+rule: >
+  Return Result for recoverable errors rather than panicking. Use thiserror
+  to define typed errors in libraries and anyhow for application code. Add
+  context with .context()/.with_context() instead of discarding the cause.
+violation: "panic!(\"file missing\")  // a recoverable case treated as fatal"
+correct: "std::fs::read(&path).with_context(|| format!(\"reading {path:?}\"))?"

@@ -1,0 +1,12 @@
+id: PY-TYPES-001
+domain: python
+severity: warning
+tags: [types, hints, annotations, mypy, typing]
+triggers: [def, class, return, "->", ": str", ": int", Optional, Union]
+when: Defining any public function, method, or class interface.
+rule: >
+  All public functions must have full type annotations on parameters and
+  return type. Use modern syntax (X | None, not Optional[X]) for Python 3.10+.
+  Private helpers should have annotations when non-obvious.
+violation: "def process(data, config): ..."
+correct: "def process(data: DataFrame, config: AppConfig) -> ProcessResult: ..."

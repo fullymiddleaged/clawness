@@ -1,0 +1,14 @@
+id: RS-UNWRAP-001
+domain: rust
+severity: error
+tags: [unwrap, expect, panic, option, result, error-handling]
+triggers: [unwrap, expect, Option, Result, "?"]
+when: Handling Option or Result values.
+rule: >
+  Avoid .unwrap() and .expect() on Option/Result in library and production
+  paths — they panic. Propagate with the ? operator, or handle None/Err
+  explicitly with match, if let, or combinators (unwrap_or, map_or,
+  ok_or). Reserve unwrap for tests and provably-impossible cases with a
+  justifying comment.
+violation: "let cfg = load_config().unwrap();  // panics on any error"
+correct: "let cfg = load_config()?;            // propagate, or .unwrap_or_default()"

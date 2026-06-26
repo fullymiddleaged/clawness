@@ -1,0 +1,13 @@
+id: CSS-RESPONSIVE-001
+domain: css
+severity: warning
+tags: [responsive, mobile-first, media-queries, fluid, breakpoints]
+triggers: ["media", responsive, "max-width", breakpoint, mobile]
+when: Making a layout work across screen sizes.
+rule: >
+  Design mobile-first: write base styles for small screens, then layer
+  enhancements with min-width media queries. Avoid fixed pixel widths on
+  containers — use max-width, %, fr, and clamp() for fluid sizing. Test at
+  real breakpoints, not a single desktop width.
+violation: "width: 1200px;   // overflows every phone"
+correct: "width: 100%; max-width: 1200px; margin-inline: auto;"

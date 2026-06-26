@@ -1,0 +1,13 @@
+id: DK-SLIM-001
+domain: docker
+severity: warning
+tags: [image-size, slim, dockerignore, cache-cleanup, optimization]
+triggers: [slim, alpine, "apt-get", dockerignore, RUN]
+when: Reducing image size and build context.
+rule: >
+  Start from a slim/alpine base, add a .dockerignore (exclude .git,
+  node_modules, build output, secrets), combine related RUN commands, and
+  clean package caches in the same layer (rm -rf /var/lib/apt/lists/*).
+  Smaller images pull faster and expose less.
+violation: "RUN apt-get update\nRUN apt-get install -y curl   // caches kept, extra layers"
+correct: "RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*"

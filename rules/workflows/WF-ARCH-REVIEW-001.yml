@@ -1,0 +1,14 @@
+id: WF-ARCH-REVIEW-001
+domain: workflows
+severity: warning
+tags: [architecture, design, decision, system-design, technology-choice, trade-off]
+triggers: [architecture, design, system design, tech stack, should we use, database choice, infrastructure, scaling, microservice, monolith]
+when: Making significant architecture or technology decisions.
+rule: >
+  Before committing to a major architecture decision, delegate to the
+  arch-challenger sub-agent for a devil's advocate review. The challenger
+  stress-tests assumptions about scale, failure modes, migration paths,
+  and operational cost. Consider the alternatives it proposes before
+  proceeding. This adds 5 minutes and saves weeks of wrong-direction work.
+violation: "Choosing a database or architecture pattern without adversarial challenge"
+correct: "Propose architecture, delegate to arch-challenger, reconcile, then decide"

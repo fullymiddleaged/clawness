@@ -1,0 +1,12 @@
+id: TS-NULL-001
+domain: typescript
+severity: error
+tags: [null, undefined, optional, safety, narrowing]
+triggers: [null, undefined, optional, "?.", "??", "!."]
+when: Accessing properties or calling methods on values that might be null or undefined.
+rule: >
+  Use type narrowing or optional chaining — never non-null assertions (!.).
+  Prefer nullish coalescing (??) over logical OR (||) for defaults,
+  since || also catches 0, '', and false.
+violation: "user!.name  or  const port = config.port || 3000"
+correct: "user?.name ?? 'anonymous'  or  const port = config.port ?? 3000"

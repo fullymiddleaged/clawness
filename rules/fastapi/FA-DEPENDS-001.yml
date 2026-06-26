@@ -1,0 +1,16 @@
+id: FA-DEPENDS-001
+domain: fastapi
+severity: warning
+tags: [dependency-injection, Depends, session, auth, reusable, DI]
+triggers: [Depends, dependency, inject, get_db, get_current_user, session, provider]
+when: Sharing logic across endpoints (DB sessions, auth, pagination).
+rule: >
+  Use FastAPI's Depends() for all cross-cutting concerns: database
+  sessions, authentication, pagination, rate limiting. Define
+  dependencies as async generators with yield for setup/teardown
+  (e.g. DB session commit/rollback). Chain dependencies — an auth
+  dependency can depend on a DB session dependency. Never instantiate
+  shared resources (DB connections, HTTP clients) inside endpoint
+  functions.
+violation: "session = SessionLocal() inside every endpoint body"
+correct: "async def get_db(): async with SessionLocal() as s: yield s — then Depends(get_db)"

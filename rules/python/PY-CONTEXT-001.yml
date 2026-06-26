@@ -1,0 +1,13 @@
+id: PY-CONTEXT-001
+domain: python
+severity: warning
+tags: [context-manager, with, resources, cleanup, files]
+triggers: [open, with, close, file, connection, lock]
+when: Acquiring a resource such as a file, lock, socket, or DB connection.
+rule: >
+  Use a context manager (with statement) so the resource is released even
+  if an exception is raised. Manual open/close leaks handles on error
+  paths. Acquire multiple resources in one with separated by commas, or use
+  contextlib.ExitStack when the number is dynamic.
+violation: "f = open(path); data = f.read(); f.close()   # leaks if read() raises"
+correct: "with open(path) as f: data = f.read()"

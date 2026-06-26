@@ -1,0 +1,14 @@
+id: RCT-STATE-001
+domain: react
+severity: warning
+tags: [state, useState, context, zustand, props, lifting, prop-drilling]
+triggers: [state, useState, context, useContext, provider, store, zustand, redux, props]
+when: Managing state in a React application.
+rule: >
+  Start with local state (useState). Lift state up only when siblings
+  need to share it. Use React Context for low-frequency global state
+  (theme, auth). For high-frequency or complex state, use a lightweight
+  store like Zustand over Redux. Never put derived values in state —
+  compute them during render. Never store what you can compute from props.
+violation: "const [fullName, setFullName] = useState(first + ' ' + last)"
+correct: "const fullName = first + ' ' + last  // computed during render"

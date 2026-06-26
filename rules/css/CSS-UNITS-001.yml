@@ -1,0 +1,13 @@
+id: CSS-UNITS-001
+domain: css
+severity: warning
+tags: [units, rem, em, responsive, accessibility, px]
+triggers: [px, rem, em, "font-size", units]
+when: Setting font sizes, spacing, or other dimensions.
+rule: >
+  Use relative units — rem for type and spacing, em for component-relative
+  sizing — for anything that should scale. Fixed px font sizes ignore the
+  user's browser font-size preference, which is an accessibility failure.
+  Reserve px for borders and hairlines.
+violation: "font-size: 14px;   // ignores the user's preferred base size"
+correct: "font-size: 0.875rem;   // scales with the root font size"

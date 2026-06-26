@@ -1,0 +1,15 @@
+id: GEN-DEPVER-001
+domain: general
+severity: warning
+tags: [versioning, lockfile, semver, pinning, updates, vulnerabilities, reproducible]
+triggers: [version, lockfile, "package-lock", semver, pin, update, dependabot, audit]
+when: Declaring dependency versions or managing dependency updates.
+rule: >
+  Commit your lockfile (package-lock.json, poetry.lock, Cargo.lock, go.sum)
+  so builds are reproducible, and set version ranges deliberately following
+  SemVer. Keep dependencies current with automated tooling (Dependabot or
+  Renovate, npm audit, pip-audit) and skim the changelog before bumping.
+  Don't let packages auto-update unreviewed, and don't let them drift years
+  behind into known-vulnerable territory.
+violation: "no lockfile committed; \"lib\": \"*\"   // every install resolves to something different"
+correct: "lockfile committed; pinned SemVer ranges; Dependabot PRs reviewed against changelogs"

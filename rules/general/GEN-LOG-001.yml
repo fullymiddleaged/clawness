@@ -1,0 +1,12 @@
+id: GEN-LOG-001
+domain: general
+severity: warning
+tags: [logging, observability, debug, print, console]
+triggers: [print, console.log, logger, logging, log]
+when: Adding diagnostic output or debugging code.
+rule: >
+  Use structured logging (logger.info/warning/error), not print() or
+  console.log(). Include context (request_id, user_id) as structured
+  fields. Remove debug prints before committing.
+violation: "print(f'user {user_id} did {action}')  or  console.log('here')"
+correct: "logger.info('action_performed', extra={'user_id': uid, 'action': action})"

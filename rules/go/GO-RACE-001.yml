@@ -1,0 +1,12 @@
+id: GO-RACE-001
+domain: go
+severity: error
+tags: [concurrency, data-race, mutex, atomic, shared-state]
+triggers: [mutex, sync, atomic, shared, "-race"]
+when: Sharing mutable state across goroutines.
+rule: >
+  Protect shared mutable state with sync.Mutex/RWMutex, or pass ownership
+  over channels — never rely on timing. Run the test suite with the race
+  detector (go test -race) in CI to catch data races before production.
+violation: "counter++  // mutated from multiple goroutines without synchronization"
+correct: "mu.Lock(); counter++; mu.Unlock()   // or atomic.AddInt64(&counter, 1)"

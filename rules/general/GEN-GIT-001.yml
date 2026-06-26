@@ -1,0 +1,14 @@
+id: GEN-GIT-001
+domain: general
+severity: info
+tags: [git, commit, branch, pull-request, conventional-commits, history]
+triggers: [git, commit, branch, merge, PR, pull request, push, rebase]
+when: Making git commits or managing branches.
+rule: >
+  Write descriptive commit messages following Conventional Commits
+  (feat:, fix:, refactor:, docs:, chore:). Each commit should be a
+  single logical change. Never commit generated files, node_modules,
+  .env, or build artifacts. Create feature branches from main. Keep
+  PRs focused — one feature or fix per PR.
+violation: "git commit -m 'stuff' with 15 unrelated changes"
+correct: "git commit -m 'feat: add user profile page with avatar upload'"

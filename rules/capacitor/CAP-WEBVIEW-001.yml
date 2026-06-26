@@ -1,0 +1,14 @@
+id: CAP-WEBVIEW-001
+domain: capacitor
+severity: warning
+tags: [webview, safe-area, status-bar, keyboard, viewport, css, notch]
+triggers: [safe-area, status-bar, StatusBar, Keyboard, viewport, notch, env, padding]
+when: Styling or laying out UI in a Capacitor app.
+rule: >
+  Account for safe area insets (notch, home indicator, status bar) using
+  CSS env(safe-area-inset-*). Configure the StatusBar plugin for style
+  and color. Handle the keyboard pushing content up with the Keyboard
+  plugin. Test on both iOS and Android — WebView rendering differs. Set
+  viewport-fit=cover in the meta viewport tag.
+violation: "Content hidden behind the iOS notch or Android status bar"
+correct: "padding-top: env(safe-area-inset-top); viewport-fit=cover in meta tag"

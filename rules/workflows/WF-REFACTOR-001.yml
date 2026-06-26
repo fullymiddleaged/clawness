@@ -1,0 +1,14 @@
+id: WF-REFACTOR-001
+domain: workflows
+severity: info
+tags: [refactor, clean, simplify, code-smell, duplication, complexity, maintainability]
+triggers: [refactor, clean up, simplify, technical debt, code smell, duplicate, complex, extract]
+when: Refactoring code or addressing technical debt.
+rule: >
+  For refactoring guidance, delegate to the refactor-advisor sub-agent.
+  It identifies code smells (duplication, complexity, coupling, naming,
+  dead code) and suggests specific improvements ranked by effort and
+  impact. Read-only analysis — it reports what to change, you decide
+  what to act on.
+violation: "Refactoring by instinct without identifying the highest-value changes first"
+correct: "Delegating to refactor-advisor for prioritized, specific refactoring opportunities"

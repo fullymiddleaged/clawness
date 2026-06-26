@@ -1,0 +1,12 @@
+id: GEN-VALIDATE-001
+domain: general
+severity: error
+tags: [validation, input, sanitize, boundary, user-input]
+triggers: [request, input, form, params, body, query, args]
+when: Receiving any input from users, APIs, files, or external systems.
+rule: >
+  Validate and sanitize all external input at the boundary. Use schema
+  validation (pydantic, zod, joi) not ad-hoc checks. Reject invalid
+  input early with clear error messages. Never trust client-side validation.
+violation: "user_age = int(request.args['age'])  # crashes on non-numeric"
+correct: "user = UserSchema.model_validate(request.json)  # validates + types"

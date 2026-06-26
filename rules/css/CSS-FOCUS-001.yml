@@ -1,0 +1,13 @@
+id: CSS-FOCUS-001
+domain: css
+severity: error
+tags: [focus, accessibility, outline, keyboard, focus-visible]
+triggers: [outline, focus, "focus-visible", accessibility, keyboard]
+when: Styling interactive elements (links, buttons, inputs).
+rule: >
+  Never remove focus outlines (outline: none) without a clearly visible
+  replacement — keyboard users rely on them to navigate. Use :focus-visible
+  to show a strong focus ring for keyboard users without showing it on
+  mouse click.
+violation: "button:focus { outline: none; }   // keyboard users lose all orientation"
+correct: "button:focus-visible { outline: 2px solid var(--color-focus); }"

@@ -1,0 +1,13 @@
+id: RS-UNSAFE-001
+domain: rust
+severity: error
+tags: [unsafe, memory-safety, ffi, invariants]
+triggers: [unsafe, "unsafe {", transmute, "raw pointer", ffi]
+when: Considering an unsafe block.
+rule: >
+  Avoid unsafe unless there is no safe alternative (FFI, a proven hot
+  path). When required, keep the block minimal, document the invariants
+  that make it sound with a SAFETY comment, and wrap it in a safe API.
+  Never reach for unsafe just to bypass the borrow checker.
+violation: "unsafe { *ptr }  // no justification, invariants undocumented"
+correct: "// SAFETY: ptr is non-null and valid for the lifetime of `buf`\nunsafe { *ptr }"

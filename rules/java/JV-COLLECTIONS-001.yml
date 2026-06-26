@@ -1,0 +1,13 @@
+id: JV-COLLECTIONS-001
+domain: java
+severity: warning
+tags: [collections, interfaces, generics, raw-types, api-design]
+triggers: [List, Map, ArrayList, HashMap, generics]
+when: Declaring fields, parameters, or return types for collections.
+rule: >
+  Program to interfaces — declare List/Map/Set, not ArrayList/HashMap — so
+  the implementation can change without touching callers. Always
+  parameterize generics; never use raw types (List instead of
+  List<String>), which silently defeat type safety.
+violation: "ArrayList items = new ArrayList();   // raw type + leaked concrete type"
+correct: "List<Item> items = new ArrayList<>();"

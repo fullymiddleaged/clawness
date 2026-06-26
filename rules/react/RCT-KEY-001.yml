@@ -1,0 +1,13 @@
+id: RCT-KEY-001
+domain: react
+severity: error
+tags: [key, list, map, index, reconciliation, rendering]
+triggers: [map, key, list, forEach, render, index, array]
+when: Rendering a list of items with .map() in JSX.
+rule: >
+  Always provide a stable, unique key prop when rendering lists. Use the
+  item's ID or unique identifier — never the array index. Index keys
+  cause bugs when the list is reordered, filtered, or items are inserted.
+  If there is truly no unique ID, generate one when the data is created.
+violation: "items.map((item, index) => <Item key={index} />)"
+correct: "items.map(item => <Item key={item.id} />)"

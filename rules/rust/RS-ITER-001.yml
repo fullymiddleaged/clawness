@@ -1,0 +1,13 @@
+id: RS-ITER-001
+domain: rust
+severity: info
+tags: [iterators, loops, functional, performance, indexing]
+triggers: [iter, map, filter, collect, "for"]
+when: Transforming or filtering a collection.
+rule: >
+  Prefer iterator chains (iter().filter().map()...) over manual index
+  loops — they are clearer, avoid off-by-one and bounds bugs, and are
+  often optimized better. Chain lazily and avoid intermediate .collect()
+  calls you do not need.
+violation: "for i in 0..v.len() { if v[i] > 0 { out.push(v[i] * 2); } }"
+correct: "let out: Vec<_> = v.iter().filter(|&&x| x > 0).map(|x| x * 2).collect();"

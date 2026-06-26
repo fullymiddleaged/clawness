@@ -1,0 +1,13 @@
+id: SQL-SELECT-001
+domain: sql
+severity: warning
+tags: [select-star, columns, performance, schema-coupling]
+triggers: ["select *", select, columns, query]
+when: Writing a SELECT query.
+rule: >
+  Select only the columns you need instead of SELECT *. Naming columns
+  cuts I/O, survives schema changes, enables covering indexes, and
+  documents intent. SELECT * also silently breaks when column order
+  changes or large blob columns are added later.
+violation: "SELECT * FROM users   -- pulls every column, including large blobs"
+correct: "SELECT id, email, created_at FROM users"

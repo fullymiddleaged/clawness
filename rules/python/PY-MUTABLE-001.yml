@@ -1,0 +1,13 @@
+id: PY-MUTABLE-001
+domain: python
+severity: error
+tags: [mutable-default, arguments, gotcha, functions, shared-state]
+triggers: [def, "=[]", "={}", default, argument]
+when: Defining a function with a default argument value.
+rule: >
+  Never use a mutable object ([], {}, set()) as a default argument. The
+  default is evaluated once at definition time and shared across every
+  call, so it silently accumulates state between invocations. Use None as
+  a sentinel and create the object inside the function body.
+violation: "def add(item, items=[]):   # `items` persists and grows across calls"
+correct: "def add(item, items=None): items = [] if items is None else items"

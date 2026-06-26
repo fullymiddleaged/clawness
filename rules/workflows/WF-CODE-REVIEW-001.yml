@@ -1,0 +1,14 @@
+id: WF-CODE-REVIEW-001
+domain: workflows
+severity: warning
+tags: [code-review, critic, review, PR, pull-request, merge, quality]
+triggers: [review, PR, pull request, merge, code review, critique, before merging]
+when: Reviewing code before a merge, PR, or deployment.
+rule: >
+  For non-trivial changes, delegate to the code-critic sub-agent for
+  an adversarial review before approving. The critic focuses on bugs,
+  performance, edge cases, and maintainability — things the original
+  author is blind to. Review the critic's findings, apply valid ones,
+  and dismiss false positives with reasoning.
+violation: "Merging code without adversarial review"
+correct: "Delegate to code-critic, review findings, address valid issues, then merge"

@@ -1,0 +1,158 @@
+#!/usr/bin/env python3
+"""
+Claude Code hook for Clawness — rule retrieval with global + project layers.
+
+How it works:
+  1. Fires on every UserPromptSubmit
+  2. Loads GLOBAL rules from ~/.claude/clawness/rules/ (always)
+  3. Loads PROJECT rules from <project>/.writ/rules/ (if they exist)
+  4. Merges both into a single retriever
+  5. Retrieves relevant rules for the current prompt
+  6. Prints the rule block to stdout → Claude sees it as context
+
+Install once, works everywhere. Project rules layer on top when present.
+"""
+
+from __future__ import annotations
+
+import json
+import os
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+try:
+    from writ_lite.core import WritLite, load_rules, Rule
+except Exception:
+    # Dependencies not ready yet (e.g. the SessionStart bootstrap is still
+    # installing pyyaml). Degrade silently rather than erroring the prompt.
+    sys.exit(0)
+
+
+def find_global_rules() -> Path:
+    """Global rules: next to this script, or WRIT_RULES_DIR override."""
+    if env := os.environ.get("WRIT_RULES_DIR"):
+        return Path(env)
+    return Path(__file__).resolve().parent.parent / "rules"
+
+
+def find_project_rules(cwd: str) -> Path | None:
+    """Walk up from cwd looking for .writ/rules/ in the project tree."""
+    current = Path(cwd).resolve()
+    # Walk up at most 10 levels looking for .writ/rules/
+    for _ in range(10):
+        candidate = current / ".writ" / "rules"
+        if candidate.is_dir():
+            return candidate
+        # Also check for .git to stop at repo root
+        if (current / ".git").exists():
+            break
+        parent = current.parent
+        if parent == current:
+            break
+        current = parent
+    return None
+
+
+def suggest_actions(prompt: str) -> str:
+    """Detect audit/review/perf intent and return a short, deterministic nudge
+    so Claude reliably *offers* the relevant skill (auto-invocation alone isn't
+    reliable). The skills themselves confirm before spawning agents, so this only
+    surfaces the offer — it never runs anything."""
+    p = prompt.lower()
+
+    def has(*phrases: str) -> bool:
+        return any(ph in p for ph in phrases)
+
+    lines: list[str] = []
+    if has("security audit", "pentest", "penetration test", "red team", "blue team",
+           "vulnerabilit", "is this secure", "is it secure", "security review",
+           "security check", "owasp", "threat model", "exploit"):
+        lines.append(
+            "This resembles a security audit. Offer to run the red team / blue team "
+            "review (/clawness:audit) — it spawns several sub-agents, so ask "
+            "before running."
+        )
+    if has("code review", "review my code", "review the code", "review my changes",
+           "review my pr", "pr review", "pull request", "before merging",
+           "before i merge", "ready to merge"):
+        lines.append(
+            "This resembles a code review. Offer to run the adversarial review "
+            "(/clawness:review) — confirm before running."
+        )
+    if has("performance audit", "perf audit", "performance review", "optimize performance",
+           "n+1", "bottleneck", "profiling", "why is this slow", "too slow",
+           "memory leak", "re-render", "rerender"):
+        lines.append(
+            "This resembles a performance review. Offer to run the performance audit "
+            "(/clawness:perf) — confirm before running."
+        )
+
+    if not lines:
+        return ""
+    return "\n--- WRIT SUGGESTED ACTIONS ---\n" + "\n".join(f"- {ln}" for ln in lines)
+
+
+def main() -> None:
+    try:
+        raw = sys.stdin.read()
+        event = json.loads(raw) if raw.strip() else {}
+    except (json.JSONDecodeError, IOError):
+        event = {}
+
+    prompt = (
+        event.get("prompt")
+        or event.get("user_prompt")
+        or event.get("message")
+        or event.get("user_message")
+        or event.get("query")
+        or ""
+    )
+
+    if not prompt:
+        sys.exit(0)
+
+    cwd = event.get("cwd", os.getcwd())
+    budget = int(os.environ.get("WRIT_BUDGET", "4000"))
+    top_k = int(os.environ.get("WRIT_TOP_K", "6"))
+
+    # --- Load global rules (always) ---
+    global_dir = find_global_rules()
+    if not global_dir.exists():
+        sys.exit(0)
+
+    wl = WritLite(global_dir, context_budget=budget, top_k=top_k)
+
+    # --- Load project rules (if present) ---
+    project_dir = find_project_rules(cwd)
+    if project_dir and project_dir.exists():
+        proj_ranked, proj_mandatory = load_rules(project_dir)
+
+        # Merge project rules into the retriever
+        if proj_ranked or proj_mandatory:
+            # Rebuild with combined rules
+            all_ranked = wl._ranked_rules + proj_ranked
+            all_mandatory = wl._mandatory_rules + proj_mandatory
+            wl._mandatory_rules = all_mandatory
+            wl._ranked_rules = all_ranked
+
+            # Rebuild indexes with the combined corpus
+            if all_ranked:
+                from writ_lite.core import _tokenize, TfIdfIndex, BM25
+                search_texts = [r._search_text for r in all_ranked]
+                tokenized = [_tokenize(t) for t in search_texts]
+                wl._bm25 = BM25()
+                wl._bm25.build(tokenized)
+                wl._tfidf = TfIdfIndex()
+                wl._tfidf.build(search_texts)
+
+    block = wl.retrieve(prompt)
+    suggestions = suggest_actions(prompt)
+    if suggestions:
+        block = block + "\n" + suggestions
+    print(block)
+
+
+if __name__ == "__main__":
+    main()

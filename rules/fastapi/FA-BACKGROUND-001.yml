@@ -1,0 +1,16 @@
+id: FA-BACKGROUND-001
+domain: fastapi
+severity: info
+tags: [background, task, BackgroundTasks, queue, email, notification, async]
+triggers: [BackgroundTasks, background, task, queue, email, notification, celery, after, fire-and-forget]
+when: Running work after returning a response to the client.
+rule: >
+  Use BackgroundTasks for lightweight fire-and-forget work (sending
+  emails, logging, cache invalidation) that should not delay the
+  response. For heavy or long-running jobs (video processing, large
+  imports, ML inference), use a proper task queue (Celery, ARQ, SAQ)
+  with a message broker. BackgroundTasks run in the same process and
+  are lost if the server crashes — use a queue for anything that must
+  not be lost.
+violation: "await send_email(user) inside the endpoint — 3 second response delay"
+correct: "background_tasks.add_task(send_email, user) — returns immediately"

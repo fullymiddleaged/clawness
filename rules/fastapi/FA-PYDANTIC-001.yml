@@ -1,0 +1,16 @@
+id: FA-PYDANTIC-001
+domain: fastapi
+severity: error
+tags: [pydantic, model, schema, validation, request, response, BaseModel]
+triggers: [BaseModel, schema, model, request, response, body, Field, validator, pydantic]
+when: Defining request or response shapes for any endpoint.
+rule: >
+  Define Pydantic models for every request body and response. Never
+  accept or return raw dicts. Use separate models for create, update,
+  and read operations (UserCreate, UserUpdate, UserRead). Set
+  model_config with from_attributes=True for ORM integration. Use
+  Field() for validation constraints (min_length, ge, le, regex).
+  Pydantic v2 is current — do not use v1 patterns like .dict() or
+  class Config.
+violation: "@app.post('/users') async def create(data: dict)"
+correct: "@app.post('/users', response_model=UserRead) async def create(data: UserCreate)"

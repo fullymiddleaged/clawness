@@ -1,0 +1,12 @@
+id: PY-ERROR-001
+domain: python
+severity: error
+tags: [exceptions, error-handling, try, catch, bare-except]
+triggers: [try, except, raise, Exception, Error]
+when: Writing try/except blocks or defining error handling strategy.
+rule: >
+  Never use bare except or catch Exception broadly. Catch the specific
+  exception types you can handle. Log or re-raise everything else.
+  Use 'raise' (no argument) to preserve the original traceback.
+violation: "except: pass  or  except Exception: return None"
+correct: "except (ValueError, KeyError) as e: log.error(...); raise"

@@ -1,0 +1,14 @@
+id: NX-LOADING-001
+domain: nextjs
+severity: warning
+tags: [loading, error, suspense, streaming, skeleton, boundary, error-boundary]
+triggers: [loading, error, Suspense, skeleton, spinner, fallback, not-found, boundary]
+when: Building pages that fetch data or could fail.
+rule: >
+  Add loading.tsx for every route segment that fetches data — it shows
+  instantly while the server streams content. Add error.tsx to catch
+  runtime errors gracefully. Use not-found.tsx for missing resources.
+  For more granular control, wrap slow components in Suspense with
+  meaningful skeleton fallbacks rather than generic spinners.
+violation: "No loading.tsx — user sees blank page while data loads"
+correct: "loading.tsx with skeleton UI + Suspense around the slowest component"

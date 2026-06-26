@@ -1,0 +1,14 @@
+id: CAP-PERM-001
+domain: capacitor
+severity: error
+tags: [permissions, camera, location, notifications, push, privacy, prompt]
+triggers: [permission, camera, location, geolocation, notification, push, microphone, photos, privacy]
+when: Using any native feature that requires user permission.
+rule: >
+  Always check permission status before requesting it. Show a custom
+  pre-permission UI explaining why the app needs access before triggering
+  the native prompt. Handle all three states: granted, denied, prompt.
+  On iOS, configure UsageDescription keys in Info.plist. On Android, add
+  permissions to AndroidManifest.xml. Never request at app launch.
+violation: "Requesting camera permission on first app open with no explanation"
+correct: "Show explanation dialog, then checkPermissions(), then requestPermissions()"

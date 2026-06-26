@@ -1,0 +1,15 @@
+id: FA-CORS-001
+domain: fastapi
+severity: error
+tags: [CORS, middleware, origins, cross-origin, security, headers]
+triggers: [CORS, CORSMiddleware, origins, cross-origin, middleware, allow_origins, headers]
+when: Configuring CORS for a FastAPI backend serving a frontend.
+rule: >
+  Add CORSMiddleware and explicitly list allowed origins — never use
+  allow_origins=["*"] in production. Specify allowed methods and
+  headers. If credentials (cookies) are used, allow_credentials=True
+  requires specific origins (not wildcard). Configure CORS early in
+  the middleware stack. For development, allow localhost origins
+  separately from production origins using environment variables.
+violation: "allow_origins=['*'], allow_credentials=True  # insecure and actually broken"
+correct: "allow_origins=[os.environ['FRONTEND_URL']], allow_credentials=True"

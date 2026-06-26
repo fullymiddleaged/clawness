@@ -1,0 +1,13 @@
+id: JV-RESOURCE-001
+domain: java
+severity: error
+tags: [try-with-resources, autocloseable, streams, leaks, cleanup]
+triggers: [try, close, AutoCloseable, InputStream, Connection]
+when: Opening a resource that implements AutoCloseable (stream, reader, connection).
+rule: >
+  Use try-with-resources so resources close automatically, even on
+  exception. A manual close() in finally is verbose and easy to get wrong
+  (including close() itself throwing and masking the real error). Declare
+  multiple resources in one try; they close in reverse order.
+violation: "InputStream in = open(); ...; in.close();  // leaks if code between throws"
+correct: "try (InputStream in = open()) { ... }   // auto-closed"

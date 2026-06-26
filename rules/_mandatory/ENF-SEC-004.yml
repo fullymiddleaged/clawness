@@ -1,0 +1,14 @@
+id: ENF-SEC-004
+domain: security
+severity: error
+tags: [auth, authentication, session, jwt, token, cookie, csrf, authorization]
+triggers: [login, auth, session, cookie, token, jwt, middleware, protect]
+when: Implementing authentication, sessions, or access control.
+rule: >
+  Use a proven auth library (NextAuth/Auth.js, Clerk, Lucia, Supabase Auth)
+  rather than hand-rolling session management. Store sessions in httpOnly
+  secure cookies, never localStorage. Validate sessions server-side on
+  every protected request. Always check authorization (not just
+  authentication) before returning data.
+violation: "localStorage.setItem('token', jwt) or trusting client-side role checks"
+correct: "httpOnly cookie with server-side session validation in middleware"

@@ -1,0 +1,14 @@
+id: CAP-LIFECYCLE-001
+domain: capacitor
+severity: warning
+tags: [lifecycle, background, foreground, resume, pause, app-state, deep-link]
+triggers: [appStateChange, resume, pause, background, foreground, lifecycle, App, backButton]
+when: Handling app state changes or the Android back button.
+rule: >
+  Listen to App.addListener('appStateChange') to handle background and
+  foreground transitions. Save state and pause expensive operations when
+  going to background. Refresh auth tokens and stale data on resume.
+  Handle the Android back button with App.addListener('backButton').
+  Clean up all listeners on component unmount to prevent memory leaks.
+violation: "Ignoring app lifecycle — stale data shown when user returns to app"
+correct: "appStateChange listener that refreshes auth token and refetches data on resume"

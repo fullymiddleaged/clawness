@@ -1,0 +1,13 @@
+id: SH-QUOTE-001
+domain: bash
+severity: error
+tags: [quoting, word-splitting, globbing, variables, expansion]
+triggers: ["$", variable, "$()", quote, expansion]
+when: Expanding a variable or command substitution.
+rule: >
+  Always double-quote expansions: "$var", "$(cmd)", "${arr[@]}". Unquoted
+  expansions undergo word splitting and glob expansion, which breaks on
+  spaces, empty values, and filenames with special characters — a frequent
+  cause of data-loss bugs. Use "${var:?msg}" to fail fast on unset values.
+violation: "rm -rf $path/*    # if $path is empty or contains spaces, disaster"
+correct: "rm -rf \"${path:?path is unset}\"/*"

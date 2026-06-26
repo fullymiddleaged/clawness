@@ -1,0 +1,13 @@
+id: JV-EXCEPTION-001
+domain: java
+severity: error
+tags: [exceptions, error-handling, swallow, logging, cause]
+triggers: [catch, exception, throw, printStackTrace, finally]
+when: Catching an exception.
+rule: >
+  Never swallow exceptions with an empty catch or a bare
+  printStackTrace(). Handle it, rethrow it wrapped with context, or let it
+  propagate — and don't catch Exception/Throwable broadly. When wrapping,
+  pass the original as the cause so the stack trace survives.
+violation: "try { ... } catch (IOException e) { }   // silently lost"
+correct: "catch (IOException e) { throw new ConfigException(\"load failed\", e); }"

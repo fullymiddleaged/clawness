@@ -1,0 +1,13 @@
+id: SQL-NPLUSONE-001
+domain: sql
+severity: warning
+tags: [n-plus-one, performance, joins, eager-loading, orm]
+triggers: [query, loop, join, "for", select, orm]
+when: Querying related data inside a loop or rendering lists with relations.
+rule: >
+  Avoid N+1 queries (one extra query per row). Fetch related rows in one
+  query with a JOIN, an IN (...) batch, or your ORM's eager loading
+  (selectinload/joinedload, Prisma include, ActiveRecord includes). Watch
+  the query log for the same statement repeating.
+violation: "for u in users: orders = db.query(Order).filter_by(user_id=u.id).all()"
+correct: "users = db.query(User).options(selectinload(User.orders)).all()"

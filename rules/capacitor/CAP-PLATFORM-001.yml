@@ -1,0 +1,13 @@
+id: CAP-PLATFORM-001
+domain: capacitor
+severity: warning
+tags: [platform, ios, android, web, detection, conditional, native]
+triggers: [Capacitor, isNativePlatform, getPlatform, platform, ios, android, web, native, mobile]
+when: Writing code that may behave differently on web vs iOS vs Android.
+rule: >
+  Use Capacitor.isNativePlatform() to detect native vs web, and
+  Capacitor.getPlatform() for iOS/Android/web branching. Never assume
+  the platform. Provide graceful web fallbacks for every native feature
+  so the app works in the browser during development and as a PWA.
+violation: "Calling Camera.getPhoto() without checking if running natively"
+correct: "if (Capacitor.isNativePlatform()) { Camera.getPhoto() } else { fileInput.click() }"

@@ -1,0 +1,13 @@
+id: WF-PERF-001
+domain: workflows
+severity: warning
+tags: [performance, slow, optimize, N+1, bundle, memory-leak, profiling]
+triggers: [performance, slow, optimize, faster, N+1, bundle size, memory leak, re-render, lazy]
+when: Investigating performance issues or optimizing code.
+rule: >
+  For performance analysis, delegate to the perf-auditor sub-agent.
+  It checks for N+1 queries, unnecessary re-renders, memory leaks,
+  bundle size issues, and algorithmic inefficiencies. It reports
+  findings with estimated impact and specific fixes.
+violation: "Guessing at performance bottlenecks without systematic analysis"
+correct: "Delegating to perf-auditor for measured, prioritized performance findings"

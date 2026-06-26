@@ -1,0 +1,13 @@
+id: GEN-NAME-001
+domain: general
+severity: info
+tags: [naming, conventions, readability, variables, functions]
+triggers: [def, function, const, let, var, class, interface]
+when: Naming any variable, function, class, or module.
+rule: >
+  Names describe intent, not type. Functions start with verbs (get_, create_,
+  is_, has_). Booleans read as questions (is_valid, has_permission). Avoid
+  abbreviations except universally understood ones (id, url, http). Collections
+  are plural (users, not user_list).
+violation: "data, tmp, x, flag, do_thing(), user_list"
+correct: "parsed_response, is_authenticated, fetch_user_profile(), active_users"

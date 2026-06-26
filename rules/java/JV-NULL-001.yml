@@ -1,0 +1,13 @@
+id: JV-NULL-001
+domain: java
+severity: error
+tags: [null, npe, optional, requireNonNull, null-safety]
+triggers: [null, "== null", Optional, NullPointerException, requireNonNull]
+when: A method may receive or return a value that could be null.
+rule: >
+  Minimize null. Validate arguments with Objects.requireNonNull, return
+  Optional<T> (never null) for "maybe" results, and return empty
+  collections rather than null. Use @Nullable / @NonNull annotations so
+  static analysis can catch NPEs at compile time instead of runtime.
+violation: "return user;   // caller forgets the null check -> NPE at runtime"
+correct: "return Optional.ofNullable(user);   // or Objects.requireNonNull(arg, \"arg\")"

@@ -1,0 +1,15 @@
+id: GEN-ENV-001
+domain: general
+severity: warning
+tags: [environment, env, config, dotenv, variables, secrets, deployment]
+triggers: [env, .env, process.env, environment, config, NEXT_PUBLIC, dotenv, variable]
+when: Managing environment variables or configuration.
+rule: >
+  Use .env.local for secrets (never committed). Use .env for non-secret
+  defaults (committed). Validate all env vars at startup with a schema
+  (Zod or similar) — crash early with a clear message if required vars
+  are missing. In Next.js, only NEXT_PUBLIC_ prefixed vars are exposed
+  to the client — never prefix secrets. Document every required env var
+  in .env.example.
+violation: "process.env.DATABASE_URL used without checking if it exists"
+correct: "Zod schema validates all env vars at startup; .env.example documents them"

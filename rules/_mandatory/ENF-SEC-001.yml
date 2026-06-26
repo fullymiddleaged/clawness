@@ -1,0 +1,11 @@
+id: ENF-SEC-001
+domain: security
+severity: error
+tags: [secrets, credentials, hardcoded, env]
+triggers: [password, api_key, secret, token, credential]
+when: Any hardcoded secret, API key, password, or credential appears in source code.
+rule: >
+  All secrets must come from environment variables or a secrets manager.
+  Never commit credentials to version control.
+violation: "password = 'hunter2'  or  API_KEY = 'sk-abc123...'"
+correct: "password = os.environ['DB_PASSWORD']  or  load from vault/SSM"

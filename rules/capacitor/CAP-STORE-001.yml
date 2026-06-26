@@ -1,0 +1,14 @@
+id: CAP-STORE-001
+domain: capacitor
+severity: error
+tags: [app-store, google-play, review, rejection, privacy, native-feature, guidelines]
+triggers: [app store, google play, submit, publish, review, rejection, privacy, guidelines]
+when: Preparing a Capacitor app for App Store or Google Play submission.
+rule: >
+  Apple rejects pure web wrapper apps — integrate at least one meaningful
+  native feature (push notifications, camera, biometrics). Fill out iOS
+  Privacy Nutrition Labels for every API used. For Google Play, target
+  the current required minimum SDK. Provide a privacy policy URL. Handle
+  App Tracking Transparency on iOS if any tracking occurs.
+violation: "Submitting a Capacitor app with zero native features — App Store rejects it"
+correct: "Integrate push notifications + camera, declare privacy labels, target current SDK"

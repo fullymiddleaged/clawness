@@ -1,0 +1,15 @@
+id: GEN-PERF-001
+domain: general
+severity: warning
+tags: [performance, bundle, lazy-load, code-splitting, lighthouse, core-web-vitals]
+triggers: [performance, bundle, lazy, dynamic, import, lighthouse, LCP, CLS, INP, split, chunk]
+when: Optimizing application performance or bundle size.
+rule: >
+  Lazy-load routes and heavy components with dynamic imports
+  (next/dynamic or React.lazy). Analyze bundle size regularly with
+  @next/bundle-analyzer or similar. Avoid importing entire libraries
+  when you only need one function (tree-shake or import specifically).
+  Measure Core Web Vitals (LCP, CLS, INP) and optimize the largest
+  contentful paint first. Compress and optimize all images and fonts.
+violation: "import _ from 'lodash'  // imports entire 70KB library"
+correct: "import debounce from 'lodash/debounce'  // imports only 1KB"

@@ -1,0 +1,13 @@
+id: JV-EQUALS-001
+domain: java
+severity: error
+tags: [equals, hashCode, equality, comparison, strings]
+triggers: [equals, hashCode, "==", compareTo, equality]
+when: Comparing objects for equality or defining a value type.
+rule: >
+  Compare objects with .equals(), not == (which compares references) — the
+  classic String-comparison bug. If you override equals() you must override
+  hashCode() consistently, or the object misbehaves in HashMap/HashSet.
+  Prefer records, which generate both correctly.
+violation: "if (a == b)              // reference identity, not value equality"
+correct: "if (Objects.equals(a, b)) // value equality, null-safe"

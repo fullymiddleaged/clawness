@@ -1,0 +1,13 @@
+id: SQL-MIGRATION-001
+domain: sql
+severity: warning
+tags: [migrations, schema, backwards-compatible, locks, downtime]
+triggers: [migration, "alter table", "add column", schema, alembic]
+when: Writing a database schema migration.
+rule: >
+  Make migrations backwards-compatible and reversible. Add columns as
+  nullable or with a default, backfill in a separate step, then enforce
+  NOT NULL / constraints in a later migration. Avoid long table locks on
+  big tables during peak traffic, and always provide a down/rollback path.
+violation: "ALTER TABLE orders ADD COLUMN status TEXT NOT NULL  -- locks table, breaks old code"
+correct: "ADD COLUMN status TEXT NULL  ->  backfill  ->  SET NOT NULL in a later migration"

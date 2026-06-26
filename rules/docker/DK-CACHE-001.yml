@@ -1,0 +1,13 @@
+id: DK-CACHE-001
+domain: docker
+severity: warning
+tags: [layers, build-cache, ordering, dependencies, performance]
+triggers: [COPY, RUN, layer, cache, Dockerfile]
+when: Ordering instructions in a Dockerfile.
+rule: >
+  Order layers from least- to most-frequently-changing so the build cache
+  is reused. Copy dependency manifests and install dependencies before
+  copying application source, so a one-line code change doesn't re-run the
+  entire dependency install.
+violation: "COPY . .\nRUN npm install   // any source edit busts the install cache"
+correct: "COPY package*.json ./\nRUN npm ci\nCOPY . .   // deps cached until manifest changes"

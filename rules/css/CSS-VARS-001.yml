@@ -1,0 +1,13 @@
+id: CSS-VARS-001
+domain: css
+severity: info
+tags: [custom-properties, variables, design-tokens, theming, dry]
+triggers: ["var(", "--", custom-property, theme, token]
+when: Reusing colors, spacing, fonts, or other design values.
+rule: >
+  Define repeated values as CSS custom properties (design tokens) on :root
+  and reference them with var(). One source of truth enables theming and
+  dark mode and avoids the same hex code scattered across dozens of rules
+  that all have to change together.
+violation: "color: #3b82f6;   // repeated in 40 places; a theme change is find/replace"
+correct: ":root { --color-primary: #3b82f6; }   .btn { color: var(--color-primary); }"

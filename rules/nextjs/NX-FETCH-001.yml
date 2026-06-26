@@ -1,0 +1,14 @@
+id: NX-FETCH-001
+domain: nextjs
+severity: error
+tags: [data-fetching, server-components, useEffect, async, database, API]
+triggers: [fetch, useEffect, useState, data, database, query, prisma, drizzle, API, getServerSideProps]
+when: Fetching data for a page or component.
+rule: >
+  Fetch data in Server Components using async/await — not useEffect.
+  Server Components can directly call databases, ORMs, or APIs without
+  exposing secrets. Use useEffect or SWR/React Query only for data that
+  changes after mount (user interactions, polling, real-time). Never use
+  getServerSideProps or getStaticProps — those are Pages Router patterns.
+violation: "useEffect(() => { fetch('/api/posts').then(...) }, []) in a page component"
+correct: "export default async function Page() { const posts = await db.select().from(posts) }"

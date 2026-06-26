@@ -1,0 +1,13 @@
+id: CSS-IMPORTANT-001
+domain: css
+severity: warning
+tags: [important, specificity, maintainability, cascade]
+triggers: ["!important", specificity, override, cascade]
+when: A style isn't applying and you're tempted to force it.
+rule: >
+  Avoid !important — it breaks the cascade and starts specificity wars that
+  compound over time (the next override needs !important too). Fix the root
+  cause: use a slightly more specific selector, reorder rules, or
+  restructure classes. Reserve it for utility classes you fully control.
+violation: ".btn { color: red !important; }   // now everything else needs !important"
+correct: ".card .btn { color: red; }   // raise specificity intentionally"

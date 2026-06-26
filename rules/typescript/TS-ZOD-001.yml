@@ -1,0 +1,14 @@
+id: TS-ZOD-001
+domain: typescript
+severity: warning
+tags: [zod, schema, validation, runtime, type-inference, parse, safeParse]
+triggers: [zod, schema, z.object, z.string, parse, safeParse, validate, infer]
+when: Validating data from external sources (APIs, forms, env vars).
+rule: >
+  Use Zod for runtime validation of external data. Define the schema
+  once and infer the TypeScript type from it (z.infer<typeof schema>).
+  Use safeParse (not parse) to handle errors without throwing. Validate
+  API responses, form data, and environment variables. Share schemas
+  between client and server for consistent validation.
+violation: "Trusting JSON.parse(body) without validation, or duplicating types and schemas"
+correct: "const User = z.object({ name: z.string() }); type User = z.infer<typeof User>"

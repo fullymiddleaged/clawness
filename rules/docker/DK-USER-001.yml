@@ -1,0 +1,12 @@
+id: DK-USER-001
+domain: docker
+severity: error
+tags: [security, non-root, user, privileges, hardening]
+triggers: [USER, root, privileges, security, "USER root"]
+when: Defining how the container process runs.
+rule: >
+  Don't run containers as root. Create a dedicated non-root user and switch
+  to it with USER before CMD/ENTRYPOINT. A compromised root process has far
+  more leverage to escape the container or damage mounted volumes.
+violation: "# no USER directive -> the process runs as root by default"
+correct: "RUN useradd -m app\nUSER app\nCMD [\"./server\"]"

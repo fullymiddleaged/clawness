@@ -1,0 +1,14 @@
+id: FA-ROUTER-001
+domain: fastapi
+severity: warning
+tags: [router, APIRouter, organize, prefix, tags, structure, module]
+triggers: [APIRouter, router, include_router, prefix, tags, app, route, endpoint]
+when: Organizing endpoints in a FastAPI application.
+rule: >
+  Split endpoints into APIRouter modules by domain (users, products,
+  orders). Each router gets its own file in a routers/ directory. Set
+  prefix and tags on the router, not on individual endpoints. Include
+  routers in the main app with app.include_router(). Keep the main
+  app.py minimal — just app creation, middleware, and router includes.
+violation: "50 endpoints all defined directly on the app object in main.py"
+correct: "routers/users.py with APIRouter(prefix='/users', tags=['users'])"

@@ -1,0 +1,12 @@
+id: ENF-TEST-001
+domain: testing
+severity: error
+tags: [tests, coverage, validation, ci]
+triggers: [test, spec, unittest, pytest, jest, vitest]
+when: Creating or modifying any function, class, or module.
+rule: >
+  Every new function with business logic must have at least one test.
+  Modifications to existing functions must not reduce test coverage.
+  Tests must be in the corresponding test file before the PR is ready.
+violation: "Adding a calculate_tax() function with no test_calculate_tax()"
+correct: "test_calculate_tax_standard_rate(), test_calculate_tax_zero(), test_calculate_tax_exempt()"

@@ -1,0 +1,13 @@
+id: SQL-TXN-001
+domain: sql
+severity: error
+tags: [transactions, atomicity, consistency, rollback, locks]
+triggers: [transaction, commit, rollback, begin, update, insert]
+when: Performing multiple related writes that must all succeed or all fail.
+rule: >
+  Wrap multi-statement writes in a single transaction so a partial failure
+  rolls back cleanly. Keep transactions short to limit lock contention, and
+  never hold one open across user input or external network calls. Pick the
+  isolation level that matches the consistency you actually need.
+violation: "debit(from); credit(to)   -- a crash between the two corrupts balances"
+correct: "with db.begin(): debit(from); credit(to)   -- both commit or neither"

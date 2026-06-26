@@ -1,0 +1,14 @@
+id: WF-TEST-001
+domain: workflows
+severity: warning
+tags: [test, testing, coverage, jest, vitest, pytest, spec, untested]
+triggers: [test, spec, coverage, untested, write tests, add tests, missing tests]
+when: Writing tests or improving test coverage.
+rule: >
+  For comprehensive test generation, delegate to the test-writer
+  sub-agent. It reads existing test patterns in the project, matches
+  the framework and style, and generates tests covering happy paths,
+  edge cases, error conditions, and boundaries. Use when adding tests
+  for new code or improving coverage on existing code.
+violation: "Writing a single happy-path test and calling it done"
+correct: "Delegating to test-writer for full coverage including edge cases and error paths"

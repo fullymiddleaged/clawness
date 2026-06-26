@@ -1,0 +1,14 @@
+id: RCT-FORM-001
+domain: react
+severity: warning
+tags: [form, input, controlled, uncontrolled, validation, react-hook-form, zod]
+triggers: [form, input, submit, onChange, register, control, validation, react-hook-form, zod, formData]
+when: Building forms with user input.
+rule: >
+  Use a form library (React Hook Form) for anything beyond a single
+  input. Validate on the client for UX and on the server for security.
+  Use Zod schemas shared between client and server validation. In
+  Next.js App Router, prefer Server Actions with useActionState for
+  form submissions.
+violation: "Hand-rolling form state with useState for every field"
+correct: "React Hook Form + Zod resolver for client, same Zod schema in Server Action"

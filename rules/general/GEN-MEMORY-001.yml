@@ -1,0 +1,14 @@
+id: GEN-MEMORY-001
+domain: general
+severity: warning
+tags: [memory, resources, leaks, cache, lifecycle, cleanup, streaming]
+triggers: [memory, leak, cache, buffer, close, dispose, listener]
+when: Allocating resources, caching data, or holding references.
+rule: >
+  Release what you acquire — files, sockets, connections, listeners,
+  subscriptions, timers — and don't hold references longer than needed.
+  Bound anything that grows: caches need a size or TTL limit, never
+  unbounded growth. Stream or paginate large data instead of loading it all
+  into memory. Watch for retained closures and dangling event handlers.
+violation: "a global cache that only ever grows; event listeners never removed"
+correct: "LRU/TTL-bounded cache; remove listeners on teardown; stream large files"

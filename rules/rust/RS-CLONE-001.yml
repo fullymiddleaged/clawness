@@ -1,0 +1,13 @@
+id: RS-CLONE-001
+domain: rust
+severity: warning
+tags: [clone, ownership, borrow, references, performance]
+triggers: [clone, "to_owned", borrow, "&", lifetime]
+when: The borrow checker complains and you are tempted to call .clone().
+rule: >
+  Don't clone just to silence the borrow checker. Prefer borrowing (&T),
+  accepting &str / &[T] instead of String / Vec, and restructuring
+  ownership. Frequent clones in hot paths are both a performance cost and a
+  design smell worth fixing.
+violation: "fn process(data: Vec<u8>) {...}   process(buffer.clone());"
+correct: "fn process(data: &[u8]) {...}      process(&buffer);"

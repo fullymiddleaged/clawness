@@ -1,0 +1,15 @@
+id: FA-ASYNC-001
+domain: fastapi
+severity: error
+tags: [async, await, sync, blocking, event-loop, concurrency, def]
+triggers: [async def, def, await, sync, blocking, requests, time.sleep, open]
+when: Choosing between async def and def for endpoint functions.
+rule: >
+  Use async def for endpoints that call async I/O (async DB drivers,
+  httpx, aiofiles). Use plain def for endpoints with blocking I/O that
+  you cannot make async — FastAPI runs these in a threadpool
+  automatically. Never call blocking functions (requests.get,
+  time.sleep, synchronous file I/O) inside an async def endpoint — it
+  blocks the entire event loop.
+violation: "async def get_data(): return requests.get(url)  # blocks event loop"
+correct: "async def get_data(): async with httpx.AsyncClient() as c: return await c.get(url)"

@@ -1,0 +1,13 @@
+id: JV-IMMUTABLE-001
+domain: java
+severity: warning
+tags: [immutability, final, records, thread-safety, value-objects]
+triggers: [final, record, immutable, setter, mutable]
+when: Defining a class that carries data or is shared across threads.
+rule: >
+  Prefer immutability: make fields final, drop setters, and use records for
+  data carriers. Immutable objects are inherently thread-safe and easier to
+  reason about. If you expose a mutable collection, return an unmodifiable
+  view or a defensive copy.
+violation: "class Point { int x, y; void setX(int x){...} }  // mutable, not thread-safe"
+correct: "record Point(int x, int y) {}   // immutable value type"

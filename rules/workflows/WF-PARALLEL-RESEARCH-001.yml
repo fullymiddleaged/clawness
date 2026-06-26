@@ -1,0 +1,15 @@
+id: WF-PARALLEL-RESEARCH-001
+domain: workflows
+severity: info
+tags: [research, parallel, sub-agent, explore, investigate, compare]
+triggers: [research, investigate, compare, explore, find out, look into, alternatives, options]
+when: Researching a topic that benefits from parallel exploration.
+rule: >
+  For broad research tasks (comparing technologies, investigating a
+  bug across multiple subsystems, exploring implementation options),
+  use parallel sub-agents. Spawn one explorer per angle — each gets
+  its own context window and returns a focused summary. Synthesize
+  the results instead of serial exploration that bloats the main
+  session context.
+violation: "Researching 5 different libraries in the main session, burning context"
+correct: "Spawn 5 parallel explore sub-agents, each researching one library, merge summaries"
