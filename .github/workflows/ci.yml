@@ -28,10 +28,13 @@ jobs:
           pip install pyyaml pytest
 
       - name: Lint rules
-        run: python -m writ_lite.cli --rules-dir ./rules lint
+        run: python -m clawness.cli --rules-dir ./rules lint
 
       - name: Run tests
         run: python -m pytest tests/ -v
 
       - name: Benchmark retrieval
-        run: python -m writ_lite.cli --rules-dir ./rules bench
+        run: python -m clawness.cli --rules-dir ./rules bench
+
+      - name: Retrieval quality (MRR@5 + hit-rate floors)
+        run: python -m clawness.cli --rules-dir ./rules eval --floor-mrr 0.85 --floor-hit 0.95

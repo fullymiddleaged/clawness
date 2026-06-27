@@ -1,0 +1,10 @@
+id: RAT-ASSUME-001
+domain: meta
+severity: warning
+tags: [assume, guess, probably, verify, check, unsure, rationalization]
+triggers: [ill assume, probably fine, should be there, i think it, it likely, assume the, pretty sure]
+when: You are about to assume an API signature, type, file path, or behavior instead of checking it.
+rule: >
+  An assumption is an unverified bug. Read the actual code, type, or docs
+  before you rely on it — verifying takes seconds, while a wrong assumption
+  costs a debugging session and erodes trust in the result.

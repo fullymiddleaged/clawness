@@ -7,8 +7,8 @@ from pathlib import Path
 import yaml
 import pytest
 
-from writ_lite.core import (
-    WritLite,
+from clawness.core import (
+    Clawness,
     Rule,
     load_rules,
     BM25,
@@ -81,8 +81,8 @@ def tmp_rules(tmp_path):
 
 @pytest.fixture
 def wl(tmp_rules):
-    """Create a WritLite instance with test rules."""
-    return WritLite(tmp_rules)
+    """Create a Clawness instance with test rules."""
+    return Clawness(tmp_rules)
 
 
 # ── Rule loading ──────────────────────────────────────────────────
@@ -199,9 +199,9 @@ class TestRRF:
         assert rrf([[], []]) == []
 
 
-# ── WritLite retriever ────────────────────────────────────────────
+# ── Clawness retriever ────────────────────────────────────────────
 
-class TestWritLite:
+class TestClawness:
     def test_stats(self, wl):
         s = wl.stats
         assert s["mandatory_rules"] == 1
@@ -211,7 +211,7 @@ class TestWritLite:
     def test_retrieve_returns_string(self, wl):
         result = wl.retrieve("implement async endpoint")
         assert isinstance(result, str)
-        assert "WRIT RULES" in result
+        assert "CLAWNESS RULES" in result
 
     def test_mandatory_always_present(self, wl):
         result = wl.retrieve("something random")
@@ -229,13 +229,13 @@ class TestWritLite:
         assert "GEN-LOG" not in result or "MANDATORY" in result.split("GEN-LOG")[0]
 
     def test_context_budget(self, tmp_rules):
-        wl = WritLite(tmp_rules, context_budget=100)
+        wl = Clawness(tmp_rules, context_budget=100)
         result = wl.retrieve("async python types logging")
         # Should be truncated by budget
-        assert "WRIT RULES" in result
+        assert "CLAWNESS RULES" in result
 
     def test_top_k(self, tmp_rules):
-        wl = WritLite(tmp_rules, top_k=1)
+        wl = Clawness(tmp_rules, top_k=1)
         result = wl.retrieve("async python types logging")
         # Count RELEVANT rules (not mandatory)
         relevant_section = result.split("RELEVANT")[-1] if "RELEVANT" in result else ""

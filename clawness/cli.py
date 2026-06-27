@@ -13,21 +13,22 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import json
 import math
 import os
 import sys
 import time
 from pathlib import Path
 
-from .core import WritLite, load_rules
+from .core import Clawness, load_rules
 
 
 def _default_rules_dir() -> Path:
-    """Locate the global rules directory, robust to how writ_lite was launched —
+    """Locate the global rules directory, robust to how clawness was launched —
     run from a clone / plugin cache, pip-installed editable, or pip-installed into
-    site-packages. Order: WRIT_RULES_DIR env, package-relative ./rules, then the
+    site-packages. Order: CLAW_RULES_DIR env, package-relative ./rules, then the
     manual-install location under the Claude config dir."""
-    env = os.environ.get("WRIT_RULES_DIR")
+    env = os.environ.get("CLAW_RULES_DIR")
     if env:
         return Path(env)
     cfg = os.environ.get("CLAUDE_CONFIG_DIR")
@@ -51,14 +52,14 @@ def cmd_query(args: argparse.Namespace) -> None:
         print(f"Rules directory not found: {rules_dir}", file=sys.stderr)
         sys.exit(1)
 
-    wl = WritLite(rules_dir, context_budget=args.budget, top_k=args.top_k)
+    wl = Clawness(rules_dir, context_budget=args.budget, top_k=args.top_k)
     result = wl.retrieve(args.query, domain=args.domain)
     print(result)
 
 
 def cmd_stats(args: argparse.Namespace) -> None:
     rules_dir = Path(args.rules_dir)
-    wl = WritLite(rules_dir)
+    wl = Clawness(rules_dir)
     s = wl.stats
 
     print(f"Rules directory : {s['rules_dir']}")
@@ -66,6 +67,11 @@ def cmd_stats(args: argparse.Namespace) -> None:
     print(f"Mandatory rules : {s['mandatory_rules']}")
     print(f"Total           : {s['total_rules']}")
     print(f"Semantic embed  : {s['embeddings'] or 'off (lexical + concepts only)'}")
+    ranked_room = max(0, s["context_budget"] - s["mandatory_tokens"])
+    print(
+        f"Tokens / turn   : ~{s['mandatory_tokens']} fixed (mandatory, every turn) "
+        f"+ up to ~{ranked_room} ranked (top-{s['top_k']}, budget {s['context_budget']})"
+    )
 
     # domain breakdown
     ranked, mandatory = load_rules(rules_dir)
@@ -76,6 +82,17 @@ def cmd_stats(args: argparse.Namespace) -> None:
         print("\nBy domain:")
         for d, count in sorted(domains.items()):
             print(f"  {d}: {count}")
+
+
+# Unambiguous weasel phrases that make a rule unenforceable. A rule should say
+# exactly what to do, not hedge. (Bare "consider" is intentionally excluded — it
+# has legitimate uses, e.g. "consider the alternatives the agent proposes".)
+import re as _re
+VAGUE_RE = _re.compile(
+    r"(?i)\b(where appropriate|as appropriate|when possible|where possible|"
+    r"if necessary|if needed|as needed|try to|should probably|might want to|"
+    r"and so on)\b"
+)
 
 
 def cmd_lint(args: argparse.Namespace) -> None:
@@ -95,6 +112,13 @@ def cmd_lint(args: argparse.Namespace) -> None:
             problems.append(f"invalid severity '{r.severity}'")
         if not r.tags:
             problems.append("no tags (retrieval quality will suffer)")
+        for field_name in ("rule", "when"):
+            m = VAGUE_RE.search(getattr(r, field_name))
+            if m:
+                problems.append(
+                    f"vague phrasing in '{field_name}': \"{m.group(0)}\" — "
+                    "state the rule precisely"
+                )
 
         if problems:
             issues += len(problems)
@@ -112,7 +136,7 @@ def cmd_lint(args: argparse.Namespace) -> None:
 
 def cmd_bench(args: argparse.Namespace) -> None:
     rules_dir = Path(args.rules_dir)
-    wl = WritLite(rules_dir)
+    wl = Clawness(rules_dir)
 
     queries = [
         "implement async REST endpoint",
@@ -244,6 +268,61 @@ def cmd_agents(args: argparse.Namespace) -> None:
         print(AGENTS_MD_TEMPLATE)
 
 
+def cmd_eval(args: argparse.Namespace) -> None:
+    """Measure retrieval quality against a labeled ground-truth set.
+    Reports MRR@k and hit-rate; fails (exit 1) if below the given floors."""
+    data_path = (
+        Path(args.data) if args.data
+        else Path(__file__).resolve().parent.parent / "tests" / "ground_truth.json"
+    )
+    if not data_path.exists():
+        print(f"Ground-truth file not found: {data_path}", file=sys.stderr)
+        sys.exit(2)
+    queries = json.loads(data_path.read_text(encoding="utf-8")).get("queries", [])
+    if not queries:
+        print("No queries in ground-truth file.", file=sys.stderr)
+        sys.exit(2)
+
+    wl = Clawness(Path(args.rules_dir), top_k=args.top_k)
+    k = args.top_k
+    rr_sum = 0.0
+    hits = 0
+    misses: list[tuple[str, list[str], list[str]]] = []
+
+    for entry in queries:
+        q = entry["q"]
+        expect = set(entry.get("expect", []))
+        ids = wl.rank_ids(q, top_k=k)
+        rank = next((i + 1 for i, rid in enumerate(ids) if rid in expect), None)
+        if rank:
+            rr_sum += 1.0 / rank
+            hits += 1
+        else:
+            misses.append((q, sorted(expect), ids))
+
+    n = len(queries)
+    mrr, hit_rate = rr_sum / n, hits / n
+    sem = wl.stats["embeddings"]
+    print(f"Eval: {n} queries  |  semantic: {sem or 'off (lexical)'}  |  top-k={k}")
+    print(f"  MRR@{k}    : {mrr:.3f}")
+    print(f"  hit-rate  : {hit_rate:.3f}  ({hits}/{n})")
+    if misses:
+        print(f"\n  {len(misses)} miss(es):")
+        for q, expect, ids in misses:
+            print(f"    - \"{q}\"")
+            print(f"        expected one of {expect}; got {ids}")
+
+    failed = False
+    if args.floor_mrr is not None and mrr < args.floor_mrr:
+        print(f"\nFAIL: MRR@{k} {mrr:.3f} < floor {args.floor_mrr}", file=sys.stderr)
+        failed = True
+    if args.floor_hit is not None and hit_rate < args.floor_hit:
+        print(f"FAIL: hit-rate {hit_rate:.3f} < floor {args.floor_hit}", file=sys.stderr)
+        failed = True
+    if failed:
+        sys.exit(1)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         prog="clawness",
@@ -260,7 +339,7 @@ def main() -> None:
     p_query = sub.add_parser("query", help="Retrieve rules for a query")
     p_query.add_argument("query", help="Natural-language task description")
     p_query.add_argument("--domain", "-d", default=None, help="Filter to domain")
-    p_query.add_argument("--top-k", "-k", type=int, default=6)
+    p_query.add_argument("--top-k", "-k", type=int, default=5)
     p_query.add_argument("--budget", "-b", type=int, default=4000, help="Token budget")
 
     # stats
@@ -271,6 +350,13 @@ def main() -> None:
 
     # bench
     sub.add_parser("bench", help="Benchmark retrieval latency")
+
+    # eval
+    p_eval = sub.add_parser("eval", help="Measure retrieval quality (MRR@k + hit-rate)")
+    p_eval.add_argument("--data", default=None, help="Path to ground_truth.json (default: bundled tests/)")
+    p_eval.add_argument("--top-k", "-k", type=int, default=5)
+    p_eval.add_argument("--floor-mrr", type=float, default=None, help="Fail if MRR below this")
+    p_eval.add_argument("--floor-hit", type=float, default=None, help="Fail if hit-rate below this")
 
     # init
     p_init = sub.add_parser("init", help="Scan project and suggest rule domains")
@@ -303,9 +389,13 @@ def main() -> None:
     elif args.command == "agents-md":
         cmd_agents(args)
     else:
-        {"query": cmd_query, "stats": cmd_stats, "lint": cmd_lint, "bench": cmd_bench}[
-            args.command
-        ](args)
+        {
+            "query": cmd_query,
+            "stats": cmd_stats,
+            "lint": cmd_lint,
+            "bench": cmd_bench,
+            "eval": cmd_eval,
+        }[args.command](args)
 
 
 if __name__ == "__main__":

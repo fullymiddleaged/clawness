@@ -1,0 +1,10 @@
+id: RAT-TEMP-HACK-001
+domain: meta
+severity: warning
+tags: [temporary, hardcode, hardcoded, quick, hack, placeholder, shortcut, rationalization]
+triggers: [just hardcode, temporary fix, for now, hardcode the, quick hack, placeholder, ill clean it]
+when: You are about to hardcode a value, skip a step, or leave a quick hack "temporarily".
+rule: >
+  Temporary hacks become permanent — "for now" code outlives its author and
+  the comment promising to fix it. Do it properly the first time: an env var
+  for the config, the real fix for the bug, the proper abstraction now.

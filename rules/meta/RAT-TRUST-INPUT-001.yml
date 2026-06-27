@@ -1,0 +1,11 @@
+id: RAT-TRUST-INPUT-001
+domain: meta
+severity: warning
+tags: [input, trust, validate, internal, sanitize, trusted, boundary, rationalization]
+triggers: [trust the input, internal only, dont need to validate, input is safe, trusted source, its internal]
+when: You are treating input as trusted because it is "internal", "controlled", or "already validated upstream".
+rule: >
+  "Internal" data still crosses trust boundaries — upstream services get
+  compromised, callers change, and "validated upstream" rots silently.
+  Validate and sanitize at your own boundary regardless of where the input
+  claims to originate.

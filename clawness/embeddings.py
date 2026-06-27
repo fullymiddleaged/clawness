@@ -9,11 +9,11 @@ layers. Uses model2vec static embeddings — the neat lightweight option:
   * CPU inference is hundreds of times faster than a transformer encoder
 
 It is entirely optional. If model2vec (and a model) aren't installed, or if
-WRIT_NO_SEMANTIC is set (WRIT_DISABLE_EMBEDDINGS is a legacy alias), retrieval
-falls back silently to the lexical + concept pipeline. To enable:
+CLAW_NO_SEMANTIC is set, retrieval falls back silently to the lexical + concept
+pipeline. To enable:
 
     pip install model2vec
-    # the default model is pulled on first use; override with WRIT_EMBED_MODEL
+    # the default model is pulled on first use; override with CLAW_EMBED_MODEL
 
 Rule vectors are cached on disk keyed by (model name + corpus hash) so the
 per-call cost in a hook is just one short query encode, not a full re-embed.
@@ -34,7 +34,7 @@ class Model2VecEmbedder:
     instead of raising if the package or model can't be loaded."""
 
     def __init__(self, model_name: Optional[str] = None) -> None:
-        self.name = model_name or os.environ.get("WRIT_EMBED_MODEL", DEFAULT_MODEL)
+        self.name = model_name or os.environ.get("CLAW_EMBED_MODEL", DEFAULT_MODEL)
         self.available = False
         self._model = None
         try:
@@ -61,10 +61,9 @@ class Model2VecEmbedder:
 def get_default_embedder() -> Optional[Model2VecEmbedder]:
     """Auto-detect an embedder. Returns None when embeddings are unavailable
     or explicitly disabled, so callers can treat None as 'lexical only'."""
-    # WRIT_NO_SEMANTIC is the documented, user-facing opt-out (it also tells the
-    # bootstrap to skip installing model2vec). WRIT_DISABLE_EMBEDDINGS is kept as
-    # a legacy alias.
-    if os.environ.get("WRIT_NO_SEMANTIC") or os.environ.get("WRIT_DISABLE_EMBEDDINGS"):
+    # CLAW_NO_SEMANTIC is the user-facing opt-out (it also tells the bootstrap
+    # to skip installing model2vec).
+    if os.environ.get("CLAW_NO_SEMANTIC"):
         return None
     emb = Model2VecEmbedder()
     return emb if emb.available else None
@@ -72,7 +71,7 @@ def get_default_embedder() -> Optional[Model2VecEmbedder]:
 
 def _cache_path(model_name: str, corpus_hash: str) -> Path:
     base = Path(
-        os.environ.get("WRIT_CACHE_DIR") or Path.home() / ".cache" / "clawness"
+        os.environ.get("CLAW_CACHE_DIR") or Path.home() / ".cache" / "clawness"
     )
     safe_model = model_name.replace("/", "_")
     return base / f"emb-{safe_model}-{corpus_hash}.npz"

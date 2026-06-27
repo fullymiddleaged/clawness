@@ -24,7 +24,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 try:
-    from writ_lite.plan import (
+    from clawness.plan import (
         find_project_root,
         gate_decision,
         record_session_approval,

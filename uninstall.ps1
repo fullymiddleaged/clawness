@@ -18,7 +18,7 @@ $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $ClaudeDir = if ($env:CLAUDE_CONFIG_DIR) { $env:CLAUDE_CONFIG_DIR } else { Join-Path $env:USERPROFILE '.claude' }
 $AgentsDir = Join-Path $ClaudeDir 'agents'
 $SkillsDir = Join-Path $ClaudeDir 'skills'
-$CacheDir  = if ($env:WRIT_CACHE_DIR) { $env:WRIT_CACHE_DIR } else { Join-Path $env:USERPROFILE '.cache\clawness' }
+$CacheDir  = if ($env:CLAW_CACHE_DIR) { $env:CLAW_CACHE_DIR } else { Join-Path $env:USERPROFILE '.cache\clawness' }
 
 $pyCmd = $null
 foreach ($c in @('python', 'python3', 'py')) {
@@ -77,7 +77,7 @@ Write-Host 'Left in place on purpose:'
 Write-Host '  - Python packages (pyyaml, model2vec, numpy) - shared with other tools.'
 Write-Host "    Remove if you want: $pyCmd -m pip uninstall model2vec numpy"
 Write-Host '  - The model2vec model cache in ~/.cache/huggingface (reusable downloads).'
-Write-Host '  - Per-project rules and state in each project .writ/ (your data).'
+Write-Host '  - Per-project rules and state in each project .clawness/ (your data).'
 Write-Host ''
 Write-Host 'Finally, delete this folder to finish:'
 Write-Host ('  Remove-Item -Recurse -Force "' + $ScriptDir + '"')

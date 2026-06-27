@@ -10,15 +10,26 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Added
 - 7 new rule domains: Go, Rust, Java, SQL, bash, CSS, Docker
 - Semantic (model2vec) retrieval, on by default — fuses with BM25 + TF-IDF +
-  concept expansion via Reciprocal Rank Fusion; opt out with `WRIT_NO_SEMANTIC`
+  concept expansion via Reciprocal Rank Fusion; opt out with `CLAW_NO_SEMANTIC`
 - Plan-approval gate (default-on, opt-out), riding Claude Code's native plan mode,
   with a `plan` CLI command (`status` / `on` / `off` / `approve` / `reset`)
-- SessionStart git-presence check (nudges to `git init`; silence with `WRIT_NO_GIT_CHECK`)
+- SessionStart git-presence check (nudges to `git init`; silence with `CLAW_NO_GIT_CHECK`)
 - SessionStart dependency-bootstrap hook (installs PyYAML / model2vec in the background)
 - `agents-md` CLI command — emit an AGENTS.md so any agent can drive the CLI
+- `meta` domain: 8 rationalization-counter rules that rebut common AI shortcuts
+  (skip tests, "too simple", hardcode "temporarily", trust input) — surfaced by
+  the retriever when a prompt signals a shortcut
+- Vagueness lint: `lint` now rejects unenforceable weasel phrasing in rules
+- Retrieval-quality eval harness: `eval` command with a labeled ground-truth set,
+  reporting MRR@5 + hit-rate against configurable floors (gates CI)
+- Token efficiency: mandatory rules render compactly (~45% smaller fixed block);
+  `CLAW_VERBOSE` / `CLAW_COMPACT` knobs; `stats` reports per-turn token estimate
 
 ### Changed
-- Rule corpus expanded from 57 to 106 rules; now 17 domains total
+- Rule corpus expanded from 57 to 114 rules; now 18 domains total
+- Renamed throughout to **Clawness** — package `clawness` (was `writ_lite`),
+  env vars `CLAW_*` (were `WRIT_*`), project rules in `.clawness/` (was `.writ/`)
+- `clawness` is now installed as a real command (editable `pip install`)
 - Plugin distribution via `.claude-plugin` marketplace + plugin manifests (`claude plugin install`)
 
 ## [0.1.0] - 2026-06-24
@@ -30,7 +41,7 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - 6 skills (slash commands): `/clawness:audit`, `/clawness:review`, `/clawness:test`, `/clawness:perf`, `/clawness:add`, `/clawness:status`
 - UserPromptSubmit hook for automatic rule injection
 - PostToolUse hook for bash output compression
-- Global rules (~/.claude/clawness/rules/) + project rules (.writ/rules/) layering
+- Global rules (~/.claude/clawness/rules/) + project rules (.clawness/rules/) layering
 - `clawness init` project scanner with auto-detection for Next.js, FastAPI, Capacitor, React, TypeScript, Python
 - `clawness query`, `stats`, `lint`, `bench` CLI commands
 - Plugin manifest (.claude-plugin/plugin.json) and marketplace manifest

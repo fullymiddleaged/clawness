@@ -10,18 +10,23 @@ description: >
 
 Show the user what's currently active in their Clawness setup.
 
+> All commands below use `clawness`. If it isn't on PATH (common for a
+> plugin-only install), use the identical `python -m clawness.cli ...`
+> (`python3` on macOS/Linux) instead.
+
 ## Steps
 
-1. **Check global rules** — Run:
+1. **Check global rules + token cost** — Run:
    ```bash
-   python3 -m writ_lite.cli --rules-dir ~/.claude/clawness/rules stats
+   clawness stats
    ```
-   Report the global rule count and domains.
+   Report the global rule count, domains, semantic on/off, and the
+   `Tokens / turn` line (the per-turn cost injected into context).
 
-2. **Check project rules** — Look for `.writ/rules/` in the current
+2. **Check project rules** — Look for `.clawness/rules/` in the current
    directory (walk up to git root). If found, run:
    ```bash
-   python3 -m writ_lite.cli --rules-dir .writ/rules stats
+   clawness --rules-dir .clawness/rules stats
    ```
    Report project-specific rules.
 
@@ -32,15 +37,15 @@ Show the user what's currently active in their Clawness setup.
    the UserPromptSubmit (rule injection) and PostToolUse (output
    compression) hooks are configured.
 
-5. **Test query** — Run a sample retrieval against the combined rule set
-   to confirm everything works:
+5. **Test query** — Run a sample retrieval to confirm everything works:
    ```bash
-   python3 -m writ_lite.cli --rules-dir ~/.claude/clawness/rules query "test query" --top-k 3
+   clawness query "test query" --top-k 3
    ```
 
 6. **Summary** — Report:
    - Global rules: N across M domains
-   - Project rules: N (or "none — run /writ-init to set up")
+   - Tokens / turn: ~N (and how to tune: `CLAW_TOP_K`, `CLAW_VERBOSE`, `CLAW_COMPACT`)
+   - Project rules: N (or "none — run `clawness init .` to set up")
    - Agents: list of installed agents
    - Hooks: active / inactive
    - Retrieval: working / not working

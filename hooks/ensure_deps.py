@@ -9,26 +9,24 @@ so it never blocks the session.
 Policy:
   - pyyaml is required and installed if missing.
   - model2vec + numpy (semantic retrieval) are installed BY DEFAULT, because
-    semantic is the chosen default. Opt out by setting WRIT_NO_SEMANTIC=1.
+    semantic is the chosen default. Opt out by setting CLAW_NO_SEMANTIC=1.
   - Everything is best-effort: failures are logged, never raised. Until a dep
     is available, retrieval degrades gracefully (lexical/concept, or skipped).
-  - A marker prevents re-attempting a failed install every single session.
+  - A failed install is simply retried on the next session — no lockout — so a
+    fixed network/permission issue is picked up immediately.
 
 This script intentionally has no third-party imports of its own.
 """
 
-import json
 import os
 import subprocess
 import sys
 import time
 from pathlib import Path
 
-RETRY_AFTER_SECONDS = 7 * 24 * 3600  # don't re-attempt a failed install for a week
-
 
 def data_dir() -> Path:
-    base = os.environ.get("CLAUDE_PLUGIN_DATA") or os.environ.get("WRIT_CACHE_DIR")
+    base = os.environ.get("CLAUDE_PLUGIN_DATA") or os.environ.get("CLAW_CACHE_DIR")
     if not base:
         base = str(Path.home() / ".cache" / "clawness")
     p = Path(base)
@@ -55,18 +53,14 @@ def importable(mod: str) -> bool:
         return False
 
 
-def recently_attempted(marker: Path) -> bool:
-    try:
-        return marker.exists() and (time.time() - marker.stat().st_mtime) < RETRY_AFTER_SECONDS
-    except Exception:
-        return False
-
-
 def pip_install(packages: list[str]) -> bool:
-    """Best-effort pip install for the current interpreter. Tries --user, then
-    falls back to --break-system-packages. Returns True on success."""
+    """Best-effort pip install for the current interpreter. Tries a plain
+    install first (works in a venv/conda and in user-writable Pythons), then
+    --user (avoids needing admin on a system-wide Python; pip rejects --user
+    inside a venv, so plain must come first), then adds --break-system-packages
+    (Debian / PEP 668). Returns True on success."""
     base = [sys.executable, "-m", "pip", "install", *packages]
-    for extra in (["--user"], ["--user", "--break-system-packages"]):
+    for extra in ([], ["--user"], ["--user", "--break-system-packages"]):
         try:
             r = subprocess.run(
                 base + extra,
@@ -82,19 +76,18 @@ def pip_install(packages: list[str]) -> bool:
 
 
 def ensure(name: str, packages: list[str]) -> None:
+    """Install *packages* if *name* isn't importable. Best-effort, and simply
+    retried on the next session if it fails — until then retrieval degrades
+    gracefully (lexical-only, or no rules if pyyaml is the one missing). pip
+    fails fast when offline and caches downloads, so re-attempting is cheap."""
     if importable(name):
-        return
-    marker = data_dir() / f".attempted-{name}"
-    if recently_attempted(marker):
-        log(f"{name} missing but recently attempted — skipping this session")
         return
     log(f"installing {name} ({' '.join(packages)})...")
     ok = pip_install(packages)
-    try:
-        marker.write_text(time.strftime("%Y-%m-%dT%H:%M:%S"))
-    except Exception:
-        pass
-    log(f"{name} install {'succeeded' if ok else 'failed (will fall back gracefully)'}")
+    log(
+        f"{name} install "
+        + ("succeeded" if ok else "failed (will retry next session; falls back gracefully)")
+    )
 
 
 def main() -> None:
@@ -110,11 +103,11 @@ def main() -> None:
     # Required.
     ensure("yaml", ["pyyaml>=6.0"])
 
-    # Semantic embeddings — on by default, opt out with WRIT_NO_SEMANTIC.
-    if not os.environ.get("WRIT_NO_SEMANTIC"):
+    # Semantic embeddings — on by default, opt out with CLAW_NO_SEMANTIC.
+    if not os.environ.get("CLAW_NO_SEMANTIC"):
         ensure("model2vec", ["model2vec>=0.3", "numpy>=1.24"])
     else:
-        log("WRIT_NO_SEMANTIC set — skipping model2vec (semantic search off)")
+        log("CLAW_NO_SEMANTIC set — skipping model2vec (semantic search off)")
 
     log("clawness bootstrap: done")
 

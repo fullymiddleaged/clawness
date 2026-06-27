@@ -23,7 +23,7 @@ semantic = [
 ]
 
 [project.scripts]
-clawness = "writ_lite.cli:main"
+clawness = "clawness.cli:main"
 
 [tool.setuptools.packages.find]
-include = ["writ_lite*"]
+include = ["clawness*"]

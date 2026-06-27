@@ -1,0 +1,10 @@
+id: RAT-SKIP-TEST-001
+domain: meta
+severity: warning
+tags: [test, tests, later, skip, afterwards, deadline, coverage, rationalization]
+triggers: [add tests later, skip the test, no tests for now, test later, write tests after, skip testing]
+when: You plan to write tests "later" instead of with the change you are making now.
+rule: >
+  "Later" rarely comes, and the context you have now is gone by then. Write
+  the test in the same change as the code. Logic merged without a test today
+  is a silent bug waiting in production tomorrow.

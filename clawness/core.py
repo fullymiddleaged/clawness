@@ -72,18 +72,24 @@ class Rule:
         self._search_text = " ".join(p for p in parts if p)
         return self._search_text
 
-    def render(self, score: float | None = None) -> str:
-        """Format for injection into agent context."""
+    def render(self, score: float | None = None, compact: bool = False) -> str:
+        """Format for injection into agent context.
+
+        compact=True emits only the id header + RULE directive, dropping
+        WHEN/BAD/GOOD. Used for always-on mandatory rules, whose WHEN/BAD/GOOD
+        examples are identical every turn — re-sending them is pure repetition.
+        """
         score_str = f" score={score:.3f}" if score is not None else ""
         lines = [f"[{self.id}] ({self.domain}/{self.severity}){score_str}"]
-        if self.when:
+        if not compact and self.when:
             lines.append(f"  WHEN: {self.when}")
         if self.rule:
             lines.append(f"  RULE: {self.rule}")
-        if self.violation:
-            lines.append(f"  BAD:  {self.violation}")
-        if self.correct:
-            lines.append(f"  GOOD: {self.correct}")
+        if not compact:
+            if self.violation:
+                lines.append(f"  BAD:  {self.violation}")
+            if self.correct:
+                lines.append(f"  GOOD: {self.correct}")
         return "\n".join(lines)
 
 
@@ -117,10 +123,10 @@ def load_rules(rules_dir: str | Path) -> tuple[list[Rule], list[Rule]]:
             mandatory=is_mandatory,
             tags=[str(t) for t in (data.get("tags") or []) if t is not None],
             triggers=[str(t) for t in (data.get("triggers") or []) if t is not None],
-            when=str(data.get("when") or ""),
-            rule=str(data.get("rule") or ""),
-            violation=str(data.get("violation") or ""),
-            correct=str(data.get("correct") or ""),
+            when=str(data.get("when") or "").strip(),
+            rule=str(data.get("rule") or "").strip(),
+            violation=str(data.get("violation") or "").strip(),
+            correct=str(data.get("correct") or "").strip(),
             source_path=str(yml_path),
         )
         r.build_search_text()
@@ -450,12 +456,12 @@ def _estimate_tokens(text: str) -> int:
     return len(text) // 4 + 1
 
 
-class WritLite:
+class Clawness:
     """
     Lightweight hybrid retriever.
 
     Usage:
-        wl = WritLite("/path/to/rules")
+        wl = Clawness("/path/to/rules")
         block = wl.retrieve("implement async endpoint for user creation")
         print(block)
     """
@@ -464,12 +470,19 @@ class WritLite:
         self,
         rules_dir: str | Path,
         context_budget: int = 4000,     # max tokens for rule block
-        top_k: int = 8,                 # max ranked rules to return
+        top_k: int = 5,                 # max ranked rules to return
         embedder: object = "auto",      # "auto" | None | a Model2VecEmbedder
     ) -> None:
         self.rules_dir = Path(rules_dir)
         self.context_budget = context_budget
         self.top_k = top_k
+
+        # Rendering verbosity (token efficiency). Mandatory rules repeat on
+        # every turn, so they render compact (id + RULE only) unless
+        # CLAW_VERBOSE is set. Ranked rules render full (with WHEN/BAD/GOOD)
+        # unless CLAW_COMPACT trims them too.
+        self._mandatory_compact = not os.environ.get("CLAW_VERBOSE")
+        self._ranked_compact = bool(os.environ.get("CLAW_COMPACT"))
 
         # optional semantic embedder (None = lexical only)
         if embedder == "auto":
@@ -520,7 +533,18 @@ class WritLite:
             "total_rules": len(self._ranked_rules) + len(self._mandatory_rules),
             "rules_dir": str(self.rules_dir),
             "embeddings": emb,
+            "mandatory_tokens": self.mandatory_token_estimate(),
+            "context_budget": self.context_budget,
+            "top_k": self.top_k,
         }
+
+    def mandatory_token_estimate(self) -> int:
+        """Approx tokens the always-on mandatory block adds to every turn
+        (honors the compact/verbose rendering setting)."""
+        block = "\n\n".join(
+            r.render(compact=self._mandatory_compact) for r in self._mandatory_rules
+        )
+        return _estimate_tokens(block) if block else 0
 
     def _embed_rank(
         self, query: str, candidate_indices: list[int], limit: int
@@ -540,6 +564,64 @@ class WritLite:
         except Exception:
             return []
 
+    def _rank(
+        self,
+        query: str,
+        domain: Optional[str] = None,
+        limit: Optional[int] = None,
+    ) -> list[tuple[int, float]]:
+        """Hybrid BM25 + TF-IDF (+ optional semantic) ranking, fused via RRF.
+        Returns fused (rule_index, score) for the ranked corpus, best first."""
+        if not self._ranked_rules or not self._bm25:
+            return []
+
+        limit = limit or self.top_k
+
+        # --- optional domain pre-filter ---
+        if domain:
+            candidate_indices = [
+                i for i, r in enumerate(self._ranked_rules)
+                if r.domain == domain
+            ]
+        else:
+            candidate_indices = list(range(len(self._ranked_rules)))
+        candidate_set = set(candidate_indices)
+
+        # --- BM25 ---
+        query_tokens = _tokenize(query)
+        bm25_scores = self._bm25.score(query_tokens)
+        bm25_ranked = [
+            (i, bm25_scores[i]) for i in candidate_indices if bm25_scores[i] > 0
+        ]
+        bm25_ranked.sort(key=lambda x: x[1], reverse=True)
+        bm25_ranked = bm25_ranked[:limit * 2]
+
+        # --- TF-IDF ---
+        tfidf_ranked = self._tfidf.query(
+            query,
+            top_k=limit * 2,
+            candidates=candidate_set if domain else None,
+        )
+
+        # --- optional semantic (embedding) ranker ---
+        ranked_lists = [bm25_ranked, tfidf_ranked]
+        embed_ranked = self._embed_rank(query, candidate_indices, limit * 2)
+        if embed_ranked:
+            ranked_lists.append(embed_ranked)
+
+        # --- RRF fusion ---
+        return rrf(ranked_lists)
+
+    def rank_ids(
+        self,
+        query: str,
+        domain: Optional[str] = None,
+        top_k: Optional[int] = None,
+    ) -> list[str]:
+        """Ranked rule IDs (best first) for a query — used by eval/diagnostics."""
+        limit = top_k or self.top_k
+        return [self._ranked_rules[i].id for i, _ in self._rank(query, domain, limit)[:limit]]
+
     def retrieve(
         self,
         query: str,
@@ -557,56 +639,23 @@ class WritLite:
         top_k = top_k or self.top_k
 
         # --- mandatory rules (always present) ---
-        mandatory_block = "\n\n".join(r.render() for r in self._mandatory_rules)
+        mandatory_block = "\n\n".join(
+            r.render(compact=self._mandatory_compact) for r in self._mandatory_rules
+        )
         used_tokens = _estimate_tokens(mandatory_block) if mandatory_block else 0
 
         if not self._ranked_rules or not self._bm25:
             elapsed_ms = (time.perf_counter_ns() - t0) / 1e6
             return self._format_block(mandatory_block, [], elapsed_ms)
 
-        # --- optional domain pre-filter ---
-        if domain:
-            candidate_indices = [
-                i for i, r in enumerate(self._ranked_rules)
-                if r.domain == domain
-            ]
-        else:
-            candidate_indices = list(range(len(self._ranked_rules)))
-
-        candidate_set = set(candidate_indices)
-
-        # --- BM25 ---
-        query_tokens = _tokenize(query)
-        bm25_scores = self._bm25.score(query_tokens)
-        bm25_ranked = [
-            (i, bm25_scores[i])
-            for i in candidate_indices
-            if bm25_scores[i] > 0
-        ]
-        bm25_ranked.sort(key=lambda x: x[1], reverse=True)
-        bm25_ranked = bm25_ranked[:top_k * 2]
-
-        # --- TF-IDF ---
-        tfidf_ranked = self._tfidf.query(
-            query,
-            top_k=top_k * 2,
-            candidates=candidate_set if domain else None,
-        )
-
-        # --- optional semantic (embedding) ranker ---
-        ranked_lists = [bm25_ranked, tfidf_ranked]
-        embed_ranked = self._embed_rank(query, candidate_indices, top_k * 2)
-        if embed_ranked:
-            ranked_lists.append(embed_ranked)
-
-        # --- RRF fusion ---
-        fused = rrf(ranked_lists)
+        # --- rank ranked-corpus candidates ---
+        fused = self._rank(query, domain, top_k)
 
         # --- apply context budget ---
         selected: list[tuple[Rule, float]] = []
         for idx, score in fused[:top_k]:
             rule = self._ranked_rules[idx]
-            rendered = rule.render(score)
+            rendered = rule.render(score, compact=self._ranked_compact)
             cost = _estimate_tokens(rendered)
             if used_tokens + cost > self.context_budget:
                 break
@@ -626,7 +675,7 @@ class WritLite:
         n_ranked = len(selected)
         total = n_mandatory + n_ranked
 
-        parts = [f"--- WRIT RULES ({total} rules, {elapsed_ms:.2f}ms) ---"]
+        parts = [f"--- CLAWNESS RULES ({total} rules, {elapsed_ms:.2f}ms) ---"]
 
         if mandatory_block:
             parts.append("")
@@ -637,8 +686,8 @@ class WritLite:
             parts.append("")
             parts.append(f"# RELEVANT ({n_ranked})")
             for rule, score in selected:
-                parts.append(rule.render(score))
+                parts.append(rule.render(score, compact=self._ranked_compact))
                 parts.append("")
 
-        parts.append("--- END WRIT RULES ---")
+        parts.append("--- END CLAWNESS RULES ---")
         return "\n".join(parts)

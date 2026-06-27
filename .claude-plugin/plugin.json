@@ -1,7 +1,7 @@
 {
   "name": "clawness",
   "version": "0.2.0",
-  "description": "A Claude Code plugin that puts the right coding rules in context on every prompt, automatically. 106 rules across 17 domains, per-prompt rule injection (BM25 + TF-IDF + concept expansion, optional model2vec embeddings), Bash-output compression, adversarial review sub-agents, slash commands, and a default-on (opt-out) plan-approval gate. No Docker, no services. Requires Python 3.10+ on PATH; on first session a background hook installs its Python deps (PyYAML, plus optional model2vec) into your environment.",
+  "description": "A Claude Code plugin that puts the right coding rules in context on every prompt, automatically. 114 rules across 18 domains, per-prompt rule injection (BM25 + TF-IDF + concept expansion, optional model2vec embeddings), Bash-output compression, adversarial review sub-agents, slash commands, and a default-on (opt-out) plan-approval gate. No Docker, no services. Requires Python 3.10+ on PATH; on first session a background hook installs its Python deps (PyYAML, plus optional model2vec) into your environment.",
   "author": {
     "name": "fullymiddleaged"
   },

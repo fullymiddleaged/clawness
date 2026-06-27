@@ -11,8 +11,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from writ_lite.core import _tokenize, _stem, WritLite  # noqa: E402
-from writ_lite import plan as P  # noqa: E402
+from clawness.core import _tokenize, _stem, Clawness  # noqa: E402
+from clawness import plan as P  # noqa: E402
 
 RULES_DIR = Path(__file__).resolve().parent.parent / "rules"
 
@@ -44,7 +44,7 @@ def test_original_tokens_preserved():
 
 
 def test_concept_bridging_in_retrieval():
-    wl = WritLite(RULES_DIR, embedder=None)  # lexical + concepts only
+    wl = Clawness(RULES_DIR, embedder=None)  # lexical + concepts only
     # query words differ from rule wording; concepts should bridge
     res = wl.retrieve("unbounded cache that keeps growing")
     assert "GEN-MEMORY-001" in res
@@ -53,7 +53,7 @@ def test_concept_bridging_in_retrieval():
 
 
 def test_embedder_none_is_lexical_only():
-    wl = WritLite(RULES_DIR, embedder=None)
+    wl = Clawness(RULES_DIR, embedder=None)
     assert wl._embedder is None
     assert wl.stats["embeddings"] is None
     # still returns rules
@@ -116,18 +116,18 @@ def test_disable_via_config_and_env():
 
     # env override on a fresh (default-on) project
     root2 = _fresh_project()
-    os.environ["WRIT_NO_PLAN_GATE"] = "1"
+    os.environ["CLAW_NO_PLAN_GATE"] = "1"
     try:
         assert P.gate_decision(root2, "Write", "x")[0] is False
     finally:
-        del os.environ["WRIT_NO_PLAN_GATE"]
+        del os.environ["CLAW_NO_PLAN_GATE"]
     assert P.gate_decision(root2, "Write", "x")[0] is True  # back on
 
 
 def test_gate_fails_open_on_bad_state():
     root = _fresh_project()
-    (root / ".writ").mkdir()
-    (root / ".writ" / "sessions.json").write_text("{ not json")
+    (root / ".clawness").mkdir()
+    (root / ".clawness" / "sessions.json").write_text("{ not json")
     block, _ = P.gate_decision(root, "Write", "x")
     assert isinstance(block, bool)  # never raises
 

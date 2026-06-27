@@ -1,0 +1,11 @@
+id: RAT-IGNORE-ERROR-001
+domain: meta
+severity: warning
+tags: [error, exception, catch, ignore, swallow, failing, flaky, rationalization]
+triggers: [ignore the error, swallow the exception, catch and continue, skip failing test, its flaky, empty catch]
+when: You are about to swallow an exception, write an empty catch, or skip a failing test as "flaky".
+rule: >
+  A swallowed error is a bug you chose not to see. Handle it meaningfully or
+  let it propagate with context — never silence it. A "flaky" test usually
+  marks a real race or dependency problem, not noise; investigate before you
+  disable it.

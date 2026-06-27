@@ -1,0 +1,10 @@
+id: RAT-WORKS-001
+domain: meta
+severity: warning
+tags: [works, fine, ship, done, good enough, happy path, rationalization]
+triggers: [it works, good enough, just ship, dont touch, leave it as is, works fine, seems to work]
+when: You are tempted to call something done because it "works" on the path you tried.
+rule: >
+  "It works" on the happy path is not "it is correct." Before calling it
+  done, exercise the error paths, the empty and boundary inputs, and the
+  security implications. The bug you ship is the case you did not try.

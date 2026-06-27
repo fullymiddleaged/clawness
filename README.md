@@ -2,7 +2,7 @@
 
 **Install once. Works everywhere. Your AI coding agent gets the right rules for every task — automatically.**
 
-Clawness is a Claude Code plugin that puts the right coding rules in context on every prompt, automatically. It ships 106 coding rules across 17 domains, 7 adversarial review sub-agents, output compression, and a default-on plan-approval gate — all in under 1 MB with zero infrastructure. You install it once, and it silently injects the relevant rules into every Claude Code session across every project on your machine.
+Clawness is a Claude Code plugin that puts the right coding rules in context on every prompt, automatically. It ships 114 coding rules across 18 domains, 7 adversarial review sub-agents, output compression, and a default-on plan-approval gate — all in under 1 MB with zero infrastructure. You install it once, and it silently injects the relevant rules into every Claude Code session across every project on your machine.
 
 Inspired by [infinri/Writ](https://github.com/infinri/Writ), rebuilt from ~2GB of infrastructure to pure Python.
 
@@ -33,7 +33,7 @@ Without Clawness, you either:
 - **Remember to mention rules manually** → you forget, Claude forgets
 
 With Clawness:
-- **106 rules live in YAML files**, organized by domain
+- **114 rules live in YAML files**, organized by domain
 - **A hook fires on every prompt**, retrieves only the rules relevant to your current task (under a millisecond on the lexical path)
 - **Mandatory rules** (security, testing) appear on every turn, non-negotiably
 - **Ranked rules** (Next.js patterns, React hooks, FastAPI conventions) appear only when relevant
@@ -57,7 +57,7 @@ You type a prompt in Claude Code
      ▼            ▼
 ┌─────────┐  ┌──────────┐
 │ GLOBAL  │  │ PROJECT  │    global rules from ~/.claude/clawness/rules/
-│ rules   │  │ rules    │    project rules from <project>/.writ/rules/
+│ rules   │  │ rules    │    project rules from <project>/.clawness/rules/
 └────┬────┘  └────┬─────┘
      └──────┬─────┘
             ▼
@@ -79,7 +79,7 @@ You type a prompt in Claude Code
 
 **Two layers of rules:**
 - **Global** (`~/.claude/clawness/rules/`) — installed once, applies to every project
-- **Project** (`<your-project>/.writ/rules/`) — optional, layers on top for project-specific conventions. Commit to git so your whole team shares them.
+- **Project** (`<your-project>/.clawness/rules/`) — optional, layers on top for project-specific conventions. Commit to git so your whole team shares them.
 
 ---
 
@@ -130,8 +130,8 @@ That's it. Skills, agents, hooks, and rules are all registered automatically. Ru
 
 > **What the plugin installs on first run.** Claude Code's install screen lists the components (commands, agents, hooks) but doesn't spell out what the hooks *do*. For transparency:
 > - **Requires Python 3.10+ on your PATH** — the hooks are Python scripts. No Python, no rules (Clawness installs but silently injects nothing). Need it? See [Installing Python](#installing-python-if-you-dont-have-it).
-> - **On your first session, a background `SessionStart` hook runs `pip install`** to fetch its Python dependencies into your environment: **PyYAML** (required) and **model2vec + numpy** (semantic search — skip these with `WRIT_NO_SEMANTIC=1`). Nothing is installed at plugin-install time; it happens on first session and is logged to `bootstrap.log` in the plugin's data directory.
-> - **The plan gate is on by default** — it blocks file edits until you approve a plan (via plan mode, or disable with `WRIT_NO_PLAN_GATE=1`). See [Plan Gate](#plan-gate-on-by-default).
+> - **On your first session, a background `SessionStart` hook runs `pip install`** to fetch its Python dependencies into your environment: **PyYAML** (required) and **model2vec + numpy** (semantic search — skip these with `CLAW_NO_SEMANTIC=1`). Nothing is installed at plugin-install time; it happens on first session and is logged to `bootstrap.log` in the plugin's data directory.
+> - **The plan gate is on by default** — it blocks file edits until you approve a plan (via plan mode, or disable with `CLAW_NO_PLAN_GATE=1`). See [Plan Gate](#plan-gate-on-by-default).
 
 ### Option 2: Manual Install
 
@@ -192,7 +192,7 @@ powershell -ExecutionPolicy Bypass -File "$env:USERPROFILE\.claude\clawness\unin
 Remove-Item -Recurse -Force "$env:USERPROFILE\.claude\clawness"
 ```
 
-Left in place on purpose (remove by hand if you want): the `pyyaml` / `model2vec` / `numpy` pip packages (shared with other tools), the model2vec model cache under `~/.cache/huggingface`, and any per-project rules in each project's `.writ/`.
+Left in place on purpose (remove by hand if you want): the `pyyaml` / `model2vec` / `numpy` pip packages (shared with other tools), the model2vec model cache under `~/.cache/huggingface`, and any per-project rules in each project's `.clawness/`.
 
 ---
 
@@ -207,7 +207,7 @@ Left in place on purpose (remove by hand if you want): the `pyyaml` / `model2vec
 When you type *"implement the user registration endpoint"*, Claude receives this prepended to the conversation:
 
 ```
---- WRIT RULES (9 rules, 0.31ms) ---
+--- CLAWNESS RULES (9 rules, 0.31ms) ---
 
 # MANDATORY (7)
 [ENF-CURRENT-001] (general/error)
@@ -226,22 +226,22 @@ When you type *"implement the user registration endpoint"*, Claude receives this
   WHEN: Receiving any input from users, APIs, files, or external systems.
   RULE: Validate and sanitize all external input at the boundary...
 
---- END WRIT RULES ---
+--- END CLAWNESS RULES ---
 ```
 
 The mandatory rules always appear. The ranked rules change based on your prompt.
+
+**Token cost.** A typical turn injects **~1,300 tokens** — roughly **~470 fixed** for the always-on mandatory block plus the selected ranked rules. To keep that fixed cost down, mandatory rules render **compactly** (just the directive, not the `WHEN`/`BAD`/`GOOD` examples, which would repeat identically every turn). Ranked rules render in full, since their examples are prompt-relevant. Run `clawness stats` to see your exact per-turn estimate, and tune it with `CLAW_TOP_K` / `CLAW_BUDGET`, `CLAW_VERBOSE` (full mandatory examples), or `CLAW_COMPACT` (trim ranked too).
 
 ### Verify It's Working
 
 Ask Claude Code directly:
 
 ```
-> what writ rules do you see in your context?
+> what clawness rules do you see in your context?
 ```
 
 If the hook is active, Claude will describe the rules it received.
-
-> **Why "writ"?** Clawness's retrieval engine is internally named `writ_lite`, so the injected block is labelled `--- WRIT RULES ---`, the env vars are `WRIT_*`, and per-project rules live in `.writ/`. It's all the same tool — *Clawness* is the package, *writ_lite* is the engine under the hood.
 
 ### Output Compression
 
@@ -249,11 +249,11 @@ When Claude runs a bash command that produces 80+ lines of output (test suites, 
 
 ### Plan Gate (on by default)
 
-Clawness enforces a plan-first workflow: file edits (`Write`/`Edit`/`MultiEdit`/`NotebookEdit`) are blocked until you've approved a plan. It rides Claude Code's **native plan mode** — present a plan, approve it, and the gate clears itself for the rest of the session. No writ-specific commands are needed in the normal flow.
+Clawness enforces a plan-first workflow: file edits (`Write`/`Edit`/`MultiEdit`/`NotebookEdit`) are blocked until you've approved a plan. It rides Claude Code's **native plan mode** — present a plan, approve it, and the gate clears itself for the rest of the session. No special commands are needed in the normal flow.
 
 If Claude tries to edit before a plan is approved, you'll see a deny message explaining what to do. Approve a plan in plan mode and editing proceeds.
 
-**To turn it off — no command needed:** set `WRIT_NO_PLAN_GATE=1` in your environment to disable the gate globally.
+**To turn it off — no command needed:** set `CLAW_NO_PLAN_GATE=1` in your environment to disable the gate globally.
 
 For finer control there's a CLI (available after a manual install, or any `pip install` — see the [CLI Reference](#cli-reference)):
 
@@ -264,7 +264,7 @@ clawness plan status    # show current state
 clawness plan approve   # manual override (headless / no plan mode)
 ```
 
-**Version control:** the plan gate stops *unplanned* edits, but recovering from a *bad* edit is git's job — Clawness deliberately doesn't reimplement checkpoints. If you open a project that isn't a git repo, a SessionStart check nudges Claude to ask whether you'd like to `git init` (it never initializes without your say-so). Silence it with `WRIT_NO_GIT_CHECK=1`.
+**Version control:** the plan gate stops *unplanned* edits, but recovering from a *bad* edit is git's job — Clawness deliberately doesn't reimplement checkpoints. If you open a project that isn't a git repo, a SessionStart check nudges Claude to ask whether you'd like to `git init` (it never initializes without your say-so). Silence it with `CLAW_NO_GIT_CHECK=1`.
 
 ---
 
@@ -304,13 +304,13 @@ Add `--write` to create the project rules directory:
 clawness init . --write
 ```
 
-This creates `.writ/rules/` in your project. The hook automatically picks up rules from this directory when you're working in the project. **Commit `.writ/` to git** — your whole team gets the same rules.
+This creates `.clawness/rules/` in your project. The hook automatically picks up rules from this directory when you're working in the project. **Commit `.clawness/` to git** — your whole team gets the same rules.
 
 ### Project Rules Directory
 
 ```
 my-app/
-├── .writ/
+├── .clawness/
 │   └── rules/
 │       ├── _mandatory/           # Project-specific mandatory rules
 │       │   └── MYAPP-DEPLOY-001.yml
@@ -322,7 +322,7 @@ my-app/
 └── ...
 ```
 
-Rules in `.writ/rules/_mandatory/` are always injected when working in this project. Rules in other subdirectories are ranked as usual.
+Rules in `.clawness/rules/_mandatory/` are always injected when working in this project. Rules in other subdirectories are ranked as usual.
 
 ---
 
@@ -378,8 +378,18 @@ triggers: [create_engine, SessionLocal, get_db, connection_pool]
 **Run `lint` after adding rules:**
 
 ```bash
-python -m writ_lite.cli lint
+clawness lint
 ```
+
+`lint` checks required fields and **rejects vague phrasing** — a rule that says "validate input *where appropriate*" or "*try to* handle errors" isn't enforceable. State the rule precisely.
+
+**Check retrieval still works after adding rules:**
+
+```bash
+clawness eval     # MRR@5 + hit-rate against tests/ground_truth.json
+```
+
+If you add rules in a new area, add a query or two to `tests/ground_truth.json` so the eval set keeps pace with the corpus.
 
 ---
 
@@ -435,12 +445,14 @@ clawness query "set up logging" --top-k 3 --budget 2000
 
 # Scan a project and suggest rules
 clawness init /path/to/project
-clawness init . --write    # create .writ/rules/ in this project
+clawness init . --write    # create .clawness/rules/ in this project
 
 # Corpus management
-clawness stats             # show rule counts by domain
-clawness lint              # validate all rule files
+clawness stats             # show rule counts by domain + per-turn token estimate
+clawness lint              # validate rule files (incl. vague-phrasing check)
 clawness bench             # benchmark retrieval latency
+clawness eval              # retrieval quality: MRR@5 + hit-rate vs. ground truth
+clawness eval --floor-mrr 0.85 --floor-hit 0.95   # fail below floors (CI gate)
 
 # Plan gate (on by default; normal flow uses native plan mode)
 clawness plan status       # show gate state
@@ -454,7 +466,7 @@ clawness agents-md --write
 clawness --rules-dir /path/to/rules stats
 ```
 
-> If `clawness` isn't found after install, your Python user-scripts directory isn't on your PATH. Either add it, or use the identical long form `python -m writ_lite.cli <command>` (`python3` on macOS/Linux), which works from any directory.
+> If `clawness` isn't found after install, your Python user-scripts directory isn't on your PATH. Either add it, or use the identical long form `python -m clawness.cli <command>` (`python3` on macOS/Linux), which works from any directory.
 
 ---
 
@@ -462,11 +474,11 @@ clawness --rules-dir /path/to/rules stats
 
 | Component | Count | Purpose |
 |-----------|-------|---------|
-| **Rules** | 106 across 17 domains | Coding standards, injected per-prompt |
+| **Rules** | 114 across 18 domains | Coding standards, injected per-prompt |
 | **Agents** | 7 sub-agents | Security red/blue team, code critic, test writer, perf auditor, refactor advisor, architecture challenger |
 | **Skills** | 6 slash commands | `/clawness:audit`, `/clawness:review`, `/clawness:test`, `/clawness:perf`, `/clawness:add`, `/clawness:status` |
 | **Hooks** | 5 (rule injection, output compression, plan gate, git check, dependency bootstrap) | Automatic context management & workflow enforcement |
-| **CLI** | 7 commands | query, init, stats, lint, bench, plan, agents-md |
+| **CLI** | 8 commands | query, init, stats, lint, bench, eval, plan, agents-md |
 | **Installers** | bash + PowerShell (with matching uninstallers) | 7-step setup for Windows, macOS, Linux |
 | **Plugin manifest** | marketplace + plugin | For `claude plugin install` |
 
@@ -477,6 +489,7 @@ clawness --rules-dir /path/to/rules stats
 | `general` | 17 | Cross-cutting: abstraction/YAGNI, comments, memory, nesting, magic numbers, immutability, dependency selection, versioning/lockfiles, linting, naming, validation, logging, env config, accessibility, git, performance |
 | `nextjs` | 10 | Server/Client components, data fetching, caching, layouts, metadata, Server Actions |
 | `fastapi` | 8 | Pydantic v2, dependency injection, async, error handling, CORS, DB sessions |
+| `meta` | 8 | Rationalization counters — rebuttals to common AI shortcuts ("too simple to test", hardcode "temporarily", "I'll refactor later", trusting input) |
 | `python` | 7 | Async I/O, imports, error handling, type hints, mutable defaults, context managers, pathlib |
 | `workflows` | 7 | Multi-agent orchestration (security audit, code review, testing, perf, refactoring, architecture, parallel research) |
 | `capacitor` | 6 | Platform detection, permissions, lifecycle, WebView, sync, App Store |
@@ -502,13 +515,15 @@ The 7 **mandatory** rules (always injected) are the 5 `security` rules, the 1 `t
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
-| `WRIT_RULES_DIR` | (next to hook script) | Override global rules directory |
-| `WRIT_TOP_K` | `6` | Max ranked rules per prompt |
-| `WRIT_BUDGET` | `4000` | Max tokens for the rule block |
-| `WRIT_NO_SEMANTIC` | (unset) | Disable model2vec embeddings (lexical + concept only) |
-| `WRIT_NO_PLAN_GATE` | (unset) | Disable the plan gate globally |
-| `WRIT_NO_GIT_CHECK` | (unset) | Stop offering to `git init` when a project isn't under version control |
-| `WRIT_EMBED_MODEL` | `minishlab/potion-base-8M` | model2vec model for semantic retrieval |
+| `CLAW_RULES_DIR` | (next to hook script) | Override global rules directory |
+| `CLAW_TOP_K` | `5` | Max ranked rules per prompt |
+| `CLAW_BUDGET` | `4000` | Max tokens for the rule block |
+| `CLAW_VERBOSE` | (unset) | Render mandatory rules in full (`WHEN`/`BAD`/`GOOD`) instead of compact — more tokens per turn |
+| `CLAW_COMPACT` | (unset) | Also render ranked rules compactly (directive only) — fewer tokens per turn |
+| `CLAW_NO_SEMANTIC` | (unset) | Disable model2vec embeddings (lexical + concept only) |
+| `CLAW_NO_PLAN_GATE` | (unset) | Disable the plan gate globally |
+| `CLAW_NO_GIT_CHECK` | (unset) | Stop offering to `git init` when a project isn't under version control |
+| `CLAW_EMBED_MODEL` | `minishlab/potion-base-8M` | model2vec model for semantic retrieval |
 | `CLAUDE_CONFIG_DIR` | `~/.claude` | Claude Code's config dir — the installer/uninstaller follow it if you've relocated it |
 | `CLAUDE_CODE_SUBAGENT_MODEL` | (none) | Override model for ALL sub-agents |
 
@@ -593,10 +608,10 @@ effort: max         # maximum reasoning — expensive, use sparingly
 | Location | Scope | When Loaded |
 |----------|-------|-------------|
 | `~/.claude/clawness/rules/` | Global | Every prompt, every project |
-| `<project>/.writ/rules/` | Project | Only when working in that project |
-| `<project>/.writ/rules/_mandatory/` | Project mandatory | Every prompt while in that project |
+| `<project>/.clawness/rules/` | Project | Only when working in that project |
+| `<project>/.clawness/rules/_mandatory/` | Project mandatory | Every prompt while in that project |
 
-> The `~/.claude/clawness/rules/` path applies to a **manual** install. With the **plugin** install, the global rules ship inside the plugin and load from its cache automatically — you don't manage that path. Either way, project rules in `<project>/.writ/rules/` work the same.
+> The `~/.claude/clawness/rules/` path applies to a **manual** install. With the **plugin** install, the global rules ship inside the plugin and load from its cache automatically — you don't manage that path. Either way, project rules in `<project>/.clawness/rules/` work the same.
 
 ---
 
@@ -605,14 +620,14 @@ effort: max         # maximum reasoning — expensive, use sparingly
 | | Writ | Clawness | CLAUDE.md |
 |---|---|---|---|
 | Rule selection | Hybrid RAG (BM25 + vector + graph) | Hybrid (BM25 + TF-IDF + RRF) | All rules, every turn |
-| Token cost per turn | ~200 tokens (selected) | ~200 tokens (selected) | All rules × all turns |
+| Token cost per turn | selected rules only | ~1,300/turn (~470 mandatory + ~5 selected) | all 114 rules (~13k+) every turn |
 | Infrastructure | Neo4j + Docker + ONNX (~2 GB) | PyYAML (~200 KB) | None |
 | Install time | ~5 minutes | ~5 seconds | Copy/paste |
 | Mandatory rules | Yes | Yes | Manual discipline |
 | Context budget | Yes | Yes | No |
 | Output compression | No | Yes (PostToolUse hook) | No |
 | Sub-agents | No | 7 adversarial agents | No |
-| Per-project rules | No | Yes (.writ/rules/) | Yes (per-directory CLAUDE.md) |
+| Per-project rules | No | Yes (.clawness/rules/) | Yes (per-directory CLAUDE.md) |
 
 ---
 
@@ -637,7 +652,7 @@ python -m pip install pyyaml --user
 **Wrong rules appearing / right rules not appearing**
 Test what the retriever sees for your exact prompt:
 ```bash
-python -m writ_lite.cli query "your exact prompt text here"
+python -m clawness.cli query "your exact prompt text here"
 ```
 Improve `tags` and `triggers` fields on the rules that should match.
 

@@ -1,0 +1,11 @@
+id: RAT-SIMPLE-001
+domain: meta
+severity: warning
+tags: [simple, trivial, obvious, quick, small, minor, easy, rationalization]
+triggers: [too simple, just a quick, trivial change, it's obvious, small fix, minor change, easy fix]
+when: You judge a change too simple to warrant a test, a check, or care.
+rule: >
+  "Simple" is a feeling, not a fact — trivial-looking code ships most
+  regressions. If it has any logic, write the one test and check the edge
+  cases before moving on. The cost of that is minutes; the cost of the
+  shortcut is a debugging session later.

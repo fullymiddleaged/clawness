@@ -72,7 +72,7 @@ def hook_already_present(events: list, hook_script: Path) -> bool:
 
 
 # Script names that identify a Clawness hook in settings.json.
-WRIT_HOOK_SCRIPTS = (
+CLAW_HOOK_SCRIPTS = (
     "claude_hook.py",
     "compress_output.py",
     "plan_gate.py",
@@ -81,9 +81,9 @@ WRIT_HOOK_SCRIPTS = (
 )
 
 
-def _is_writ_hook(h: dict) -> bool:
+def _is_clawness_hook(h: dict) -> bool:
     cmd = h.get("command", "") if isinstance(h, dict) else ""
-    return any(name in cmd for name in WRIT_HOOK_SCRIPTS)
+    return any(name in cmd for name in CLAW_HOOK_SCRIPTS)
 
 
 def unmerge(settings_path: Path, dry_run: bool = False) -> str:
@@ -108,7 +108,7 @@ def unmerge(settings_path: Path, dry_run: bool = False) -> str:
         new_groups = []
         for g in groups:
             inner = g.get("hooks", []) if isinstance(g, dict) else []
-            kept = [h for h in inner if not _is_writ_hook(h)]
+            kept = [h for h in inner if not _is_clawness_hook(h)]
             removed += len(inner) - len(kept)
             if kept:
                 g["hooks"] = kept

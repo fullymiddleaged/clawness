@@ -17,7 +17,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 RULES_DIR="$SCRIPT_DIR/rules"
 HOOK_SCRIPT="$SCRIPT_DIR/hooks/claude_hook.py"
 SETUP_PY="$SCRIPT_DIR/hooks/setup_settings.py"
-CORE_MODULE="$SCRIPT_DIR/writ_lite/core.py"
+CORE_MODULE="$SCRIPT_DIR/clawness/core.py"
 
 SKIP_HOOK=false
 SETTINGS_PATH=""
@@ -75,14 +75,28 @@ echo "[2/7] Installing clawness + dependencies..."
 echo "  Installs the 'clawness' command + PyYAML into your Python ($PY_CMD)."
 echo "  Downloads from PyPI — this can take a minute."
 
-# Editable install so `clawness` and `python -m writ_lite.cli` work from any
+# Editable install so `clawness` and `python -m clawness.cli` work from any
 # directory, while rules keep loading from this folder. PyYAML comes as a
 # dependency; the [semantic] extra (next) adds model2vec + numpy.
-"$PY_CMD" -m pip install -e "$SCRIPT_DIR" --user 2>&1 | sed 's/^/    /' || \
-    "$PY_CMD" -m pip install -e "$SCRIPT_DIR" --user --break-system-packages 2>&1 | sed 's/^/    /' || true
+#
+# Try a plain install first (works inside a venv/conda and in user-writable
+# Pythons), then --user (avoids needing admin on a system-wide Python — note
+# pip rejects --user inside a venv, which is why plain comes first), then add
+# --break-system-packages (Debian / PEP 668).
+pip_install_e() {   # $1 = target spec (path, or path[extra])
+    local flagset
+    for flagset in "" "--user" "--user --break-system-packages"; do
+        if "$PY_CMD" -m pip install -e "$1" $flagset 2>&1 | sed 's/^/    /'; then
+            return 0
+        fi
+    done
+    return 1
+}
+
+pip_install_e "$SCRIPT_DIR" || true
 if ! "$PY_CMD" -c 'import yaml' 2>/dev/null; then
     echo "  ERROR: Failed to install clawness (PyYAML not importable)."
-    echo "  Try running manually: $PY_CMD -m pip install -e \"$SCRIPT_DIR\" --user"
+    echo "  Try running manually: $PY_CMD -m pip install -e \"$SCRIPT_DIR\""
     exit 1
 fi
 echo "  ✓ clawness installed — 'clawness' command available (PyYAML ready)"
@@ -92,13 +106,12 @@ echo "  ✓ clawness installed — 'clawness' command available (PyYAML ready)"
 SEMANTIC_OK=false
 if [ "$SEMANTIC" = true ]; then
     echo "  Semantic retrieval requested — installing model2vec + numpy (~50 MB, may take a few minutes)..."
-    "$PY_CMD" -m pip install -e "$SCRIPT_DIR[semantic]" --user 2>&1 || \
-        "$PY_CMD" -m pip install -e "$SCRIPT_DIR[semantic]" --user --break-system-packages 2>&1 || true
+    pip_install_e "$SCRIPT_DIR[semantic]" || true
     if "$PY_CMD" -c 'import model2vec' 2>/dev/null; then
         SEMANTIC_OK=true
         echo "  ✓ model2vec installed"
         echo "  Pre-downloading static embedding model (first time only)..."
-        ( cd "$SCRIPT_DIR" && "$PY_CMD" -c 'from writ_lite.embeddings import get_default_embedder as g; e=g(); print("  ✓ semantic model ready (" + e.name + ")") if e else print("  ⚠ model load failed — retrieval falls back to lexical until available")' ) || \
+        ( cd "$SCRIPT_DIR" && "$PY_CMD" -c 'from clawness.embeddings import get_default_embedder as g; e=g(); print("  ✓ semantic model ready (" + e.name + ")") if e else print("  ⚠ model load failed — retrieval falls back to lexical until available")' ) || \
             echo "  ⚠ Model download failed (offline?) — semantic falls back to lexical until the model is available"
     else
         echo "  ⚠ Could not install model2vec — continuing with lexical + concept retrieval"
@@ -136,7 +149,7 @@ echo ""
 echo "[4/7] Linting rules..."
 
 cd "$SCRIPT_DIR"
-LINT_OUTPUT=$("$PY_CMD" -m writ_lite.cli --rules-dir "$RULES_DIR" lint 2>&1) && LINT_OK=true || LINT_OK=false
+LINT_OUTPUT=$("$PY_CMD" -m clawness.cli --rules-dir "$RULES_DIR" lint 2>&1) && LINT_OK=true || LINT_OK=false
 
 if [ "$LINT_OK" = true ]; then
     echo "  ✓ $LINT_OUTPUT"
@@ -149,7 +162,7 @@ fi
 echo ""
 echo "[5/7] Testing retrieval..."
 
-TEST_OUTPUT=$("$PY_CMD" -m writ_lite.cli --rules-dir "$RULES_DIR" query "implement async REST endpoint with error handling" 2>&1) || {
+TEST_OUTPUT=$("$PY_CMD" -m clawness.cli --rules-dir "$RULES_DIR" query "implement async REST endpoint with error handling" 2>&1) || {
     echo "  ERROR: Retrieval failed:"
     echo "$TEST_OUTPUT" | sed 's/^/    /'
     exit 1
@@ -235,7 +248,7 @@ echo "    clawness stats"
 echo "    clawness plan status"
 echo ""
 echo "  If 'clawness' isn't found, your Python user-scripts dir isn't on PATH —"
-echo "  use '$PY_CMD -m writ_lite.cli ...' instead (identical, works from anywhere)."
+echo "  use '$PY_CMD -m clawness.cli ...' instead (identical, works from anywhere)."
 echo ""
 echo "  Add rules:  drop .yml files into $RULES_DIR/<domain>/"
 if [ "$SEMANTIC_OK" = true ]; then

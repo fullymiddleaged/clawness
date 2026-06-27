@@ -3,12 +3,12 @@ Plan gate ("process keeper").
 
 Inspired by infinri/Writ's process keeper, this blocks file edits until a plan
 has been approved — but it rides Claude Code's NATIVE plan mode instead of
-inventing a parallel command flow. The normal path requires zero writ-specific
+inventing a parallel command flow. The normal path requires zero clawness-specific
 commands: present a plan, the user approves it (ExitPlanMode), and the gate
 clears itself for the rest of that session.
 
   - ON by default. Disable per-project with `clawness plan off`, or globally
-    with the WRIT_NO_PLAN_GATE environment variable.
+    with the CLAW_NO_PLAN_GATE environment variable.
   - Approval is recorded automatically when the user approves a plan in plan
     mode. `clawness plan approve` is only a fallback for non-plan-mode or
     headless use.
@@ -17,7 +17,7 @@ clears itself for the rest of that session.
   - Fails OPEN: any unexpected error defers to the normal permission flow rather
     than blocking work.
 
-State lives in <project>/.writ/:
+State lives in <project>/.clawness/:
   - config.json   : { plan_gate: { enabled } }
   - sessions.json : { <session_id>: <approved_at>, ... }   (auto-managed)
   - plan.json     : { status, approved_at }                (manual override)
@@ -41,17 +41,17 @@ _SESSION_TTL_SECONDS = 24 * 3600  # prune session approvals older than a day
 
 
 def find_project_root(start: Optional[Path] = None) -> Path:
-    """Walk up from *start* looking for an existing .writ/ or .git/; fall back
+    """Walk up from *start* looking for an existing .clawness/ or .git/; fall back
     to *start* itself."""
     start = (start or Path.cwd()).resolve()
     for candidate in [start, *start.parents]:
-        if (candidate / ".writ").is_dir() or (candidate / ".git").is_dir():
+        if (candidate / ".clawness").is_dir() or (candidate / ".git").is_dir():
             return candidate
     return start
 
 
-def writ_dir(root: Path) -> Path:
-    return root / ".writ"
+def clawness_dir(root: Path) -> Path:
+    return root / ".clawness"
 
 
 def _now() -> str:
@@ -66,7 +66,7 @@ def default_config() -> dict:
 
 def load_config(root: Path) -> dict:
     base = default_config()
-    path = writ_dir(root) / "config.json"
+    path = clawness_dir(root) / "config.json"
     try:
         cfg = json.loads(path.read_text())
         if isinstance(cfg.get("plan_gate"), dict):
@@ -77,13 +77,13 @@ def load_config(root: Path) -> dict:
 
 
 def save_config(root: Path, cfg: dict) -> None:
-    d = writ_dir(root)
+    d = clawness_dir(root)
     d.mkdir(parents=True, exist_ok=True)
     (d / "config.json").write_text(json.dumps(cfg, indent=2) + "\n")
 
 
 def gate_enabled(root: Path) -> bool:
-    if os.environ.get("WRIT_NO_PLAN_GATE"):
+    if os.environ.get("CLAW_NO_PLAN_GATE"):
         return False
     return bool(load_config(root).get("plan_gate", {}).get("enabled", True))
 
@@ -91,7 +91,7 @@ def gate_enabled(root: Path) -> bool:
 # --- per-session approval (native plan mode) ------------------------------
 
 def _sessions_path(root: Path) -> Path:
-    return writ_dir(root) / "sessions.json"
+    return clawness_dir(root) / "sessions.json"
 
 
 def _load_sessions(root: Path) -> dict:
@@ -102,7 +102,7 @@ def _load_sessions(root: Path) -> dict:
 
 
 def _save_sessions(root: Path, sessions: dict) -> None:
-    d = writ_dir(root)
+    d = clawness_dir(root)
     d.mkdir(parents=True, exist_ok=True)
     _sessions_path(root).write_text(json.dumps(sessions, indent=2) + "\n")
 
@@ -139,7 +139,7 @@ def default_state() -> dict:
 def load_state(root: Path) -> dict:
     base = default_state()
     try:
-        st = json.loads((writ_dir(root) / "plan.json").read_text())
+        st = json.loads((clawness_dir(root) / "plan.json").read_text())
         base.update({k: st[k] for k in base if k in st})
     except Exception:
         pass
@@ -147,7 +147,7 @@ def load_state(root: Path) -> dict:
 
 
 def save_state(root: Path, state: dict) -> None:
-    d = writ_dir(root)
+    d = clawness_dir(root)
     d.mkdir(parents=True, exist_ok=True)
     (d / "plan.json").write_text(json.dumps(state, indent=2) + "\n")
 

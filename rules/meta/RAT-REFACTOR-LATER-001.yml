@@ -1,0 +1,10 @@
+id: RAT-REFACTOR-LATER-001
+domain: meta
+severity: warning
+tags: [refactor, cleanup, later, debt, messy, duplicate, duplication, rationalization]
+triggers: [refactor later, clean up later, fix it later, deal with later, leave the duplication, tidy later]
+when: You notice a mess — duplication, a bad name, dead code — but plan to fix it "later".
+rule: >
+  The mess you leave is the mess the next change inherits, minus the context
+  you have right now. Clean the small thing while you are already here;
+  deferred cleanup compounds into debt that no one ever schedules time to pay.

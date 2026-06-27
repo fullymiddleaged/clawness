@@ -10,5 +10,6 @@ build/
 venv/
 .env
 *.tar.gz
-.writ/
-.writ_prewarm.py
+.clawness/
+.clawness_prewarm.py
+.pytest_cache/

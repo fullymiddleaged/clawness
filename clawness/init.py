@@ -5,7 +5,7 @@ domains are relevant, then report which rules will fire and suggest
 project-specific rules to create.
 
 Usage:
-    python -m writ_lite.init [project_dir]
+    python -m clawness.init [project_dir]
 """
 
 from __future__ import annotations
@@ -229,17 +229,17 @@ def main() -> None:
 
     # Check if we should write it
     if "--write" in sys.argv:
-        out_dir = project_dir / ".writ" / "rules" / project_name
+        out_dir = project_dir / ".clawness" / "rules" / project_name
         out_dir.mkdir(parents=True, exist_ok=True)
         out_path = out_dir / rule_filename
         out_path.write_text(rule_content, encoding="utf-8")
         print(f"Written to: {out_path}")
         print()
-        print("Project rules directory created at .writ/rules/")
+        print("Project rules directory created at .clawness/rules/")
         print("Add more .yml rules here — they layer on top of global rules.")
-        print("Add .writ/ to version control so your team shares the same rules.")
+        print("Add .clawness/ to version control so your team shares the same rules.")
     else:
-        print("(Run with --write to create .writ/rules/ in this project)")
+        print("(Run with --write to create .clawness/rules/ in this project)")
 
 
 if __name__ == "__main__":

@@ -33,7 +33,7 @@ $WritDir = (Resolve-Path $WritDir).Path
 $RulesDir   = Join-Path $WritDir 'rules'
 $HookScript = Join-Path $WritDir 'hooks\claude_hook.py'
 $SetupPy    = Join-Path $WritDir 'hooks\setup_settings.py'
-$CoreModule = Join-Path $WritDir 'writ_lite\core.py'
+$CoreModule = Join-Path $WritDir 'clawness\core.py'
 
 # -- banner ---------------------------------------------------------
 Write-Host ''
@@ -78,18 +78,24 @@ Write-Host '[2/7] Installing clawness + dependencies...' -ForegroundColor Yellow
 Write-Host ("  Installs the 'clawness' command + PyYAML into your Python (" + $pyCmd + ').') -ForegroundColor Gray
 Write-Host '  Downloads from PyPI - this can take a minute.' -ForegroundColor Gray
 
-# Editable install so `clawness` and `python -m writ_lite.cli` work from any
+# Editable install so `clawness` and `python -m clawness.cli` work from any
 # directory, while rules keep loading from this folder. PyYAML comes as a
 # dependency; the [semantic] extra (next) adds model2vec + numpy.
-& $pyCmd -m pip install -e $WritDir --user 2>&1 | Out-Null
-& $pyCmd -c 'import yaml' 2>$null
-if ($LASTEXITCODE -ne 0) {
-    & $pyCmd -m pip install -e $WritDir --user --break-system-packages 2>&1 | Out-Null
+#
+# Try a plain install first (works inside a venv and user-writable Pythons),
+# then --user (avoids needing admin on a system-wide Python — pip rejects
+# --user inside a venv, so plain must come first), then add
+# --break-system-packages (Debian / PEP 668).
+$flagSets = @('', '--user', '--user --break-system-packages')
+foreach ($fs in $flagSets) {
+    $flags = if ($fs) { $fs -split ' ' } else { @() }
+    & $pyCmd -m pip install -e $WritDir @flags 2>&1 | Out-Null
     & $pyCmd -c 'import yaml' 2>$null
+    if ($LASTEXITCODE -eq 0) { break }
 }
 if ($LASTEXITCODE -ne 0) {
     Write-Host '  ERROR: Failed to install clawness (PyYAML not importable).' -ForegroundColor Red
-    Write-Host ('  Try manually: ' + $pyCmd + ' -m pip install -e "' + $WritDir + '" --user') -ForegroundColor Red
+    Write-Host ('  Try manually: ' + $pyCmd + ' -m pip install -e "' + $WritDir + '"') -ForegroundColor Red
     exit 1
 }
 Write-Host "  OK: clawness installed - 'clawness' command available (PyYAML ready)" -ForegroundColor Green
@@ -99,11 +105,11 @@ $SemanticOk = $false
 if ($Semantic) {
     Write-Host '  Semantic retrieval requested - installing model2vec + numpy (~50 MB, may take a few minutes)...' -ForegroundColor DarkYellow
     $pkgSpec = "$WritDir[semantic]"
-    & $pyCmd -m pip install -e $pkgSpec --user 2>&1 | Out-Null
-    & $pyCmd -c 'import model2vec' 2>$null
-    if ($LASTEXITCODE -ne 0) {
-        & $pyCmd -m pip install -e $pkgSpec --user --break-system-packages 2>&1 | Out-Null
+    foreach ($fs in $flagSets) {
+        $flags = if ($fs) { $fs -split ' ' } else { @() }
+        & $pyCmd -m pip install -e $pkgSpec @flags 2>&1 | Out-Null
         & $pyCmd -c 'import model2vec' 2>$null
+        if ($LASTEXITCODE -eq 0) { break }
     }
     if ($LASTEXITCODE -eq 0) {
         $SemanticOk = $true
@@ -111,10 +117,10 @@ if ($Semantic) {
         Write-Host '  Pre-downloading static embedding model (first time only)...' -ForegroundColor DarkYellow
         # Run the prewarm from a temp script file (here-string) rather than an
         # inline `-c`: PowerShell mangles complex inline Python arguments. The
-        # file lives in $WritDir so `import writ_lite` resolves.
+        # file lives in $WritDir so `import clawness` resolves.
         $prewarmCode = @'
 try:
-    from writ_lite.embeddings import get_default_embedder
+    from clawness.embeddings import get_default_embedder
     e = get_default_embedder()
     if e:
         print("  OK: semantic model ready (" + e.name + ")")
@@ -123,7 +129,7 @@ try:
 except Exception:
     print("  WARN: model prewarm skipped - falls back to lexical")
 '@
-        $prewarmFile = Join-Path $WritDir '.writ_prewarm.py'
+        $prewarmFile = Join-Path $WritDir '.clawness_prewarm.py'
         try {
             Set-Content -Path $prewarmFile -Value $prewarmCode -Encoding ASCII
             Push-Location $WritDir
@@ -167,7 +173,7 @@ Write-Host ('  OK: ' + $ruleCount + ' rule files found') -ForegroundColor Green
 Write-Host ''
 Write-Host '[4/7] Linting rules...' -ForegroundColor Yellow
 
-& $pyCmd -m writ_lite.cli --rules-dir $RulesDir lint 2>&1 | Tee-Object -Variable lintOutput | Out-Null
+& $pyCmd -m clawness.cli --rules-dir $RulesDir lint 2>&1 | Tee-Object -Variable lintOutput | Out-Null
 if ($LASTEXITCODE -ne 0) {
     Write-Host '  WARNING: Some rules have issues:' -ForegroundColor DarkYellow
     Write-Host $lintOutput
@@ -180,7 +186,7 @@ Write-Host ''
 Write-Host '[5/7] Testing retrieval...' -ForegroundColor Yellow
 
 $testQuery = 'implement async REST endpoint with error handling'
-& $pyCmd -m writ_lite.cli --rules-dir $RulesDir query $testQuery 2>&1 | Tee-Object -Variable result | Out-Null
+& $pyCmd -m clawness.cli --rules-dir $RulesDir query $testQuery 2>&1 | Tee-Object -Variable result | Out-Null
 
 if ($LASTEXITCODE -ne 0) {
     Write-Host '  ERROR: Retrieval failed:' -ForegroundColor Red
@@ -263,7 +269,7 @@ Write-Host '    clawness stats'                  -ForegroundColor Gray
 Write-Host '    clawness plan status'            -ForegroundColor Gray
 Write-Host ''
 Write-Host "  If 'clawness' isn't found, your Python user-scripts dir isn't on PATH -" -ForegroundColor White
-Write-Host ('  use ' + $pyCmd + ' -m writ_lite.cli ... instead (identical, works anywhere).') -ForegroundColor Gray
+Write-Host ('  use ' + $pyCmd + ' -m clawness.cli ... instead (identical, works anywhere).') -ForegroundColor Gray
 Write-Host ''
 Write-Host ('  Add rules:  drop .yml files into ' + $RulesDir + '\<domain>\') -ForegroundColor White
 if ($SemanticOk) {

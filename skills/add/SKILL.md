@@ -38,7 +38,7 @@ Generate a Clawness rule from the user's description.
    - The framework/library names (e.g., "nextjs", "prisma", "zod")
 
 4. **Save the rule** — Determine the right location:
-   - If `.writ/rules/` exists in the project, save there (project-scoped)
+   - If `.clawness/rules/` exists in the project, save there (project-scoped)
    - Otherwise, save to the global rules directory
    - Ask the user to confirm before writing
 

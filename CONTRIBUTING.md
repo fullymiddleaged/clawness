@@ -27,8 +27,8 @@ correct: "Concrete example of what TO do"
 - [ ] `tags` and `triggers` contain words someone would actually use when working on a task this rule covers
 - [ ] `rule` is specific enough that Claude can follow it without interpretation
 - [ ] `violation` and `correct` show concrete code, not vague descriptions
-- [ ] `python -m writ_lite.cli lint` passes
-- [ ] `python -m writ_lite.cli query "a prompt that should match"` returns your rule in the top results
+- [ ] `python -m clawness.cli lint` passes
+- [ ] `python -m clawness.cli query "a prompt that should match"` returns your rule in the top results
 
 ### Where to put rules
 
@@ -78,7 +78,7 @@ Create a directory in `skills/<name>/` with a `SKILL.md` inside:
 ---
 name: your-skill-name
 description: >
-  When this skill should be available. Becomes /writ-<name> in Claude Code.
+  When this skill should be available. Becomes /clawness:<name> in Claude Code.
 ---
 
 # Skill Name
@@ -95,8 +95,8 @@ If $ARGUMENTS is provided, use it as [context].
 ```bash
 git clone https://github.com/fullymiddleaged/clawness.git
 cd clawness
-python -m writ_lite.cli lint     # rules valid
-python -m writ_lite.cli bench    # retrieval works
+python -m clawness.cli lint     # rules valid
+python -m clawness.cli bench    # retrieval works
 python -m pytest tests/          # tests pass
 ```
 
@@ -105,7 +105,7 @@ python -m pytest tests/          # tests pass
 - Pure Python, no heavy dependencies (PyYAML is the only external dep)
 - Keep the retriever fast (<1ms for <500 rules)
 - Test your changes: `python -m pytest tests/`
-- Lint rules after any YAML changes: `python -m writ_lite.cli lint`
+- Lint rules after any YAML changes: `python -m clawness.cli lint`
 
 ## Pull Requests
 

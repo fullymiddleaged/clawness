@@ -9,7 +9,7 @@ control is the user's call. The note tells Claude to ask and to act only on
 explicit confirmation.
 
 Silent when git is present, when git isn't installed, in non-project locations
-(home dir / filesystem root), or when disabled via WRIT_NO_GIT_CHECK. Fails open.
+(home dir / filesystem root), or when disabled via CLAW_NO_GIT_CHECK. Fails open.
 """
 
 import json
@@ -27,7 +27,7 @@ NOTE = (
     "(and offer an initial commit — `git init` alone protects nothing until "
     "there's a commit) if the user agrees; never initialize version control "
     "without explicit confirmation. The user can silence this with "
-    "WRIT_NO_GIT_CHECK=1."
+    "CLAW_NO_GIT_CHECK=1."
 )
 
 
@@ -37,7 +37,7 @@ def main() -> None:
     except Exception:
         sys.exit(0)
 
-    if os.environ.get("WRIT_NO_GIT_CHECK"):
+    if os.environ.get("CLAW_NO_GIT_CHECK"):
         sys.exit(0)
 
     cwd = payload.get("cwd") or os.getcwd()
@@ -54,7 +54,7 @@ def main() -> None:
         pass
 
     # Per-project opt-out marker.
-    if (cwd_path / ".writ" / "git-check-off").exists():
+    if (cwd_path / ".clawness" / "git-check-off").exists():
         sys.exit(0)
 
     # If git isn't installed, suggesting `git init` is pointless.

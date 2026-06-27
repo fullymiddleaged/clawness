@@ -5,7 +5,7 @@ Claude Code hook for Clawness — rule retrieval with global + project layers.
 How it works:
   1. Fires on every UserPromptSubmit
   2. Loads GLOBAL rules from ~/.claude/clawness/rules/ (always)
-  3. Loads PROJECT rules from <project>/.writ/rules/ (if they exist)
+  3. Loads PROJECT rules from <project>/.clawness/rules/ (if they exist)
   4. Merges both into a single retriever
   5. Retrieves relevant rules for the current prompt
   6. Prints the rule block to stdout → Claude sees it as context
@@ -23,7 +23,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 try:
-    from writ_lite.core import WritLite, load_rules, Rule
+    from clawness.core import Clawness, load_rules, Rule
 except Exception:
     # Dependencies not ready yet (e.g. the SessionStart bootstrap is still
     # installing pyyaml). Degrade silently rather than erroring the prompt.
@@ -31,18 +31,18 @@ except Exception:
 
 
 def find_global_rules() -> Path:
-    """Global rules: next to this script, or WRIT_RULES_DIR override."""
-    if env := os.environ.get("WRIT_RULES_DIR"):
+    """Global rules: next to this script, or CLAW_RULES_DIR override."""
+    if env := os.environ.get("CLAW_RULES_DIR"):
         return Path(env)
     return Path(__file__).resolve().parent.parent / "rules"
 
 
 def find_project_rules(cwd: str) -> Path | None:
-    """Walk up from cwd looking for .writ/rules/ in the project tree."""
+    """Walk up from cwd looking for .clawness/rules/ in the project tree."""
     current = Path(cwd).resolve()
-    # Walk up at most 10 levels looking for .writ/rules/
+    # Walk up at most 10 levels looking for .clawness/rules/
     for _ in range(10):
-        candidate = current / ".writ" / "rules"
+        candidate = current / ".clawness" / "rules"
         if candidate.is_dir():
             return candidate
         # Also check for .git to stop at repo root
@@ -91,7 +91,7 @@ def suggest_actions(prompt: str) -> str:
 
     if not lines:
         return ""
-    return "\n--- WRIT SUGGESTED ACTIONS ---\n" + "\n".join(f"- {ln}" for ln in lines)
+    return "\n--- CLAWNESS SUGGESTED ACTIONS ---\n" + "\n".join(f"- {ln}" for ln in lines)
 
 
 def main() -> None:
@@ -114,15 +114,15 @@ def main() -> None:
         sys.exit(0)
 
     cwd = event.get("cwd", os.getcwd())
-    budget = int(os.environ.get("WRIT_BUDGET", "4000"))
-    top_k = int(os.environ.get("WRIT_TOP_K", "6"))
+    budget = int(os.environ.get("CLAW_BUDGET", "4000"))
+    top_k = int(os.environ.get("CLAW_TOP_K", "5"))
 
     # --- Load global rules (always) ---
     global_dir = find_global_rules()
     if not global_dir.exists():
         sys.exit(0)
 
-    wl = WritLite(global_dir, context_budget=budget, top_k=top_k)
+    wl = Clawness(global_dir, context_budget=budget, top_k=top_k)
 
     # --- Load project rules (if present) ---
     project_dir = find_project_rules(cwd)
@@ -139,7 +139,7 @@ def main() -> None:
 
             # Rebuild indexes with the combined corpus
             if all_ranked:
-                from writ_lite.core import _tokenize, TfIdfIndex, BM25
+                from clawness.core import _tokenize, TfIdfIndex, BM25
                 search_texts = [r._search_text for r in all_ranked]
                 tokenized = [_tokenize(t) for t in search_texts]
                 wl._bm25 = BM25()

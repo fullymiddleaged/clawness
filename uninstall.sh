@@ -18,7 +18,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CLAUDE_DIR="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"   # matches the installer (honors CLAUDE_CONFIG_DIR)
 AGENTS_DIR="$CLAUDE_DIR/agents"
 SKILLS_DIR="$CLAUDE_DIR/skills"
-CACHE_DIR="${WRIT_CACHE_DIR:-$HOME/.cache/clawness}"
+CACHE_DIR="${CLAW_CACHE_DIR:-$HOME/.cache/clawness}"
 
 PY_CMD=""
 for c in python3 python py; do
@@ -83,7 +83,7 @@ echo "Left in place on purpose:"
 echo "  - Python packages (pyyaml, model2vec, numpy) — shared with other tools."
 echo "    Remove if you want: $PY_CMD -m pip uninstall model2vec numpy"
 echo "  - The model2vec model cache in ~/.cache/huggingface (reusable downloads)."
-echo "  - Per-project rules and state in each project's .writ/ (your data)."
+echo "  - Per-project rules and state in each project's .clawness/ (your data)."
 echo ""
 echo "Finally, delete this folder to finish:"
 echo "  rm -rf \"$SCRIPT_DIR\""
