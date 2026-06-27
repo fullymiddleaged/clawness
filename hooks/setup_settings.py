@@ -20,7 +20,6 @@ from __future__ import annotations
 import argparse
 import json
 import os
-import platform
 import sys
 from pathlib import Path
 
@@ -42,21 +41,24 @@ def default_settings_path() -> Path:
     return claude_config_dir() / "settings.json"
 
 
-def python_command() -> str:
-    """Return the Python command appropriate for this OS."""
-    if platform.system() == "Windows":
-        return "python"
-    return "python3"
-
-
 def build_hook_entry(hook_script: Path, timeout: int = 30) -> dict:
-    """Build the hook JSON object pointing at our script."""
-    py = python_command()
-    # Use forward slashes even on Windows — Claude Code handles them fine
+    """Build the hook JSON object pointing at our script.
+
+    Uses a portable interpreter picker (python3 -> python -> py) rather than a
+    single hardcoded command, so the hook runs whatever Python actually exists
+    — matching the plugin's hooks and avoiding a mismatch with whatever the
+    installer happened to detect (e.g. the Windows `py` launcher). Claude Code
+    runs hook commands via a POSIX shell (sh / Git Bash on Windows), so the
+    loop is portable across all platforms."""
+    # Forward slashes even on Windows — Claude Code / Git Bash handle them fine.
     script_path = str(hook_script.resolve()).replace("\\", "/")
+    command = (
+        'for p in python3 python py; do '
+        f'command -v "$p" >/dev/null 2>&1 && exec "$p" "{script_path}"; done'
+    )
     return {
         "type": "command",
-        "command": f'{py} "{script_path}"',
+        "command": command,
         "timeout": timeout,
     }
 

@@ -5,6 +5,18 @@ All notable changes to Clawness will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.1] - 2026-06-27
+
+### Fixed
+- Plugin install failed: `marketplace.json` declared the plugin `source` as a
+  second GitHub clone of the same repo. Corrected to `"./"` (the plugin *is* the
+  marketplace repo), so install reuses the already-fetched copy — no redundant
+  clone, and no install-time clone at all for local marketplaces.
+- Manual installer hardcoded a single Python interpreter into the settings.json
+  hooks. It now writes the same portable `python3 → python → py` picker as the
+  plugin hooks, so hooks run even when only the Windows `py` launcher (or only
+  `python3`) is on PATH.
+
 ## [0.2.0] - 2026-06-27
 
 ### Added
