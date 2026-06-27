@@ -14,38 +14,30 @@ Show the user what's currently active in their Clawness setup.
 > plugin-only install), use the identical `python -m clawness.cli ...`
 > (`python3` on macOS/Linux) instead.
 
+Keep this FAST — it's a quick health check, not a full scan. Do **not** run a
+test query (it loads the embedding model and is slow); step 1 already proves
+retrieval is working at zero cost.
+
 ## Steps
 
-1. **Check global rules + token cost** — Run:
+1. **Report the rules you already see (no command).** You (Claude) receive the
+   Clawness rule block at the top of your context this turn. Summarize it: how
+   many mandatory + relevant rules, and a few rule IDs. If you see it, injection
+   is working — this alone is the health check.
+
+2. **Show the corpus + token cost.** Run (fast — does not load the model):
    ```bash
    clawness stats
    ```
-   Report the global rule count, domains, semantic on/off, and the
-   `Tokens / turn` line (the per-turn cost injected into context).
+   Report total rules, domains, whether semantic is available, and the
+   `Tokens / turn` line.
 
-2. **Check project rules** — Look for `.clawness/rules/` in the current
-   directory (walk up to git root). If found, run:
-   ```bash
-   clawness --rules-dir .clawness/rules stats
-   ```
-   Report project-specific rules.
+3. **Project rules (only if present).** If `.clawness/rules/` exists in the
+   project (walk up to the git root), mention it; otherwise skip silently.
 
-3. **Check agents** — List files in `~/.claude/agents/` that were
-   installed by Clawness.
+**Summary** — keep it to a few lines:
+- Rule injection: working (you saw the block) / not seeing rules
+- Global rules: N across M domains; ~N tokens/turn (tune with `CLAW_TOP_K`, `CLAW_VERBOSE`, `CLAW_COMPACT`)
+- Project rules: N, or "none — `clawness init .` to add some"
 
-4. **Check hooks** — Read `~/.claude/settings.json` and report whether
-   the UserPromptSubmit (rule injection) and PostToolUse (output
-   compression) hooks are configured.
-
-5. **Test query** — Run a sample retrieval to confirm everything works:
-   ```bash
-   clawness query "test query" --top-k 3
-   ```
-
-6. **Summary** — Report:
-   - Global rules: N across M domains
-   - Tokens / turn: ~N (and how to tune: `CLAW_TOP_K`, `CLAW_VERBOSE`, `CLAW_COMPACT`)
-   - Project rules: N (or "none — run `clawness init .` to set up")
-   - Agents: list of installed agents
-   - Hooks: active / inactive
-   - Retrieval: working / not working
+> If `clawness` isn't on PATH (plugin-only install), use `python -m clawness.cli ...`.
