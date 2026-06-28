@@ -54,8 +54,11 @@ def main() -> None:
             pass
         sys.exit(0)
 
-    # Write gate.
-    block, reason = gate_decision(root, tool_name, session_id)
+    # Write gate. Pass the target path so writes to Claude Code's plan file
+    # (which happen during plan mode, before approval) are never blocked.
+    tool_input = payload.get("tool_input") or {}
+    target_path = tool_input.get("file_path") or tool_input.get("notebook_path") or ""
+    block, reason = gate_decision(root, tool_name, session_id, target_path)
     if not block:
         sys.exit(0)
 

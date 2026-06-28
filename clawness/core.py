@@ -14,10 +14,11 @@ Retrieval pipeline:
      so queries match rules that use different words for the same idea
   4. BM25-Okapi keyword search over rule text (pure Python)
   5. TF-IDF cosine similarity over rule text (pure Python)
-  6. Optional model2vec static-embedding ranker (if installed) for true
-     vector semantics — see embeddings.py; falls back silently if absent
-  7. Reciprocal Rank Fusion merges the ranked lists
-  8. Context budget caps total output tokens
+  6. Reciprocal Rank Fusion merges the ranked lists
+  7. Context budget caps total output tokens
+
+No models, no embeddings, no services — the concept layer (step 3) gives the
+"different words, same idea" reach that a vector model would, instantly.
 
 Typical corpus (<500 rules): ~1 ms end-to-end lexical, <1 MB on disk.
 """
@@ -154,9 +155,9 @@ def load_rules(rules_dir: str | Path) -> tuple[list[Rule], list[Rule]]:
 #   2. Concept expansion maps domain synonyms onto a shared marker token
 #      (auth/jwt/oauth/login/session -> __auth__), applied symmetrically to
 #      both rules and queries, so "handle login tokens" can match a rule
-#      written about "authentication". For true vector semantics, install
-#      model2vec and the embedding ranker activates automatically (see
-#      embeddings.py); this layer is the always-on floor beneath it.
+#      written about "authentication". This is our "semantic" layer: it gives
+#      the "different words, same idea" reach of a vector model, but instantly
+#      and with zero dependencies. Enrich _CONCEPT_GROUPS to extend its reach.
 # ---------------------------------------------------------------------------
 
 _TOKEN_RE = re.compile(r"[a-z0-9_]+")
@@ -185,7 +186,8 @@ _CONCEPT_GROUPS: dict[str, tuple[str, ...]] = {
     "__error__": (
         "error", "errors", "exception", "exceptions", "panic", "fail",
         "failure", "failures", "crash", "throw", "throws", "raise", "raises",
-        "catch", "rescue", "fault",
+        "catch", "rescue", "fault", "result", "unwrap", "recover", "errno",
+        "stacktrace", "traceback",
     ),
     "__test__": (
         "test", "tests", "testing", "unittest", "pytest", "jest", "vitest",
@@ -227,20 +229,61 @@ _CONCEPT_GROUPS: dict[str, tuple[str, ...]] = {
     "__ui__": (
         "ui", "frontend", "css", "style", "styles", "styling", "layout",
         "responsive", "component", "components", "render", "rendering",
-        "accessibility", "a11y",
+        "accessibility", "a11y", "react", "jsx", "tailwind", "flexbox", "grid",
+        "hook", "hooks", "rerender",
     ),
     "__api__": (
         "api", "endpoint", "endpoints", "rest", "restful", "graphql", "route",
         "routes", "routing", "controller", "handler", "handlers", "request",
-        "requests", "response", "responses", "http",
+        "requests", "response", "responses", "http", "cors", "middleware",
+        "serialization", "payload", "status",
     ),
     "__validation__": (
         "validate", "validation", "validator", "sanitize", "schema", "zod",
-        "pydantic", "constraint", "constraints",
+        "pydantic", "constraint", "constraints", "untrusted", "escape", "input",
     ),
     "__container__": (
         "docker", "dockerfile", "container", "containers", "image", "images",
         "kubernetes", "k8s", "compose", "pod", "pods",
+    ),
+    "__null__": (
+        "null", "none", "nil", "undefined", "optional", "nullable",
+        "nullability", "nonnull", "npe",
+    ),
+    "__naming__": (
+        "naming", "rename", "identifier", "magic", "constant", "constants",
+    ),
+    "__docs__": (
+        "comment", "comments", "docstring", "documentation", "readme",
+        "javadoc", "doc", "docs",
+    ),
+    "__refactor__": (
+        "refactor", "refactoring", "cleanup", "duplication", "duplicate",
+        "dry", "complexity", "smell", "coupling", "cohesion", "abstraction",
+        "yagni",
+    ),
+    "__immutable__": (
+        "immutable", "immutability", "mutation", "mutate", "readonly",
+        "frozen", "freeze", "const",
+    ),
+    "__build__": (
+        "build", "ci", "cicd", "pipeline", "compile", "compiler", "bundle",
+        "bundler", "webpack", "vite", "rollup", "lint", "linter", "eslint",
+        "prettier", "format", "formatter",
+    ),
+    "__git__": (
+        "git", "commit", "commits", "branch", "branches", "merge", "rebase",
+        "pr", "diff", "vcs", "gitignore",
+    ),
+    "__shell__": (
+        "shell", "bash", "sh", "posix", "shellcheck",
+    ),
+    "__mobile__": (
+        "capacitor", "ios", "android", "mobile", "native", "webview", "cordova",
+    ),
+    "__shortcut__": (
+        "shortcut", "hack", "temporary", "temporarily", "quick", "simple",
+        "trivial", "obvious", "later", "assume", "assumption", "skip", "lazy",
     ),
 }
 
@@ -471,7 +514,6 @@ class Clawness:
         rules_dir: str | Path,
         context_budget: int = 4000,     # max tokens for rule block
         top_k: int = 5,                 # max ranked rules to return
-        embedder: object = "auto",      # "auto" | None | a Model2VecEmbedder
     ) -> None:
         self.rules_dir = Path(rules_dir)
         self.context_budget = context_budget
@@ -483,14 +525,6 @@ class Clawness:
         # unless CLAW_COMPACT trims them too.
         self._mandatory_compact = not os.environ.get("CLAW_VERBOSE")
         self._ranked_compact = bool(os.environ.get("CLAW_COMPACT"))
-
-        # optional semantic embedder (None = lexical only)
-        if embedder == "auto":
-            from .embeddings import get_default_embedder
-            self._embedder = get_default_embedder()
-        else:
-            self._embedder = embedder
-        self._rule_vecs = None
 
         # load
         self._ranked_rules, self._mandatory_rules = load_rules(self.rules_dir)
@@ -512,27 +546,13 @@ class Clawness:
         self._tfidf = TfIdfIndex()
         self._tfidf.build(search_texts)
 
-        # Optional embedding matrix (cached on disk). Best-effort: any failure
-        # disables the semantic ranker rather than breaking retrieval.
-        if self._embedder is not None:
-            try:
-                from .embeddings import build_rule_matrix
-                self._rule_vecs = build_rule_matrix(self._embedder, search_texts)
-            except Exception:
-                self._embedder = None
-                self._rule_vecs = None
-
     @property
     def stats(self) -> dict:
-        emb = None
-        if getattr(self, "_embedder", None) is not None and self._rule_vecs is not None:
-            emb = getattr(self._embedder, "name", "enabled")
         return {
             "ranked_rules": len(self._ranked_rules),
             "mandatory_rules": len(self._mandatory_rules),
             "total_rules": len(self._ranked_rules) + len(self._mandatory_rules),
             "rules_dir": str(self.rules_dir),
-            "embeddings": emb,
             "mandatory_tokens": self.mandatory_token_estimate(),
             "context_budget": self.context_budget,
             "top_k": self.top_k,
@@ -546,32 +566,15 @@ class Clawness:
         )
         return _estimate_tokens(block) if block else 0
 
-    def _embed_rank(
-        self, query: str, candidate_indices: list[int], limit: int
-    ) -> list[tuple[int, float]]:
-        """Cosine-rank candidate rules against the query embedding. Returns
-        [] when the semantic ranker is unavailable or errors out."""
-        if self._embedder is None or self._rule_vecs is None:
-            return []
-        try:
-            import numpy as np
-
-            qv = self._embedder.embed([query])[0]          # (dim,), normalized
-            sims = self._rule_vecs @ qv                      # (n,), cosine
-            ranked = [(i, float(sims[i])) for i in candidate_indices if sims[i] > 0]
-            ranked.sort(key=lambda x: x[1], reverse=True)
-            return ranked[:limit]
-        except Exception:
-            return []
-
     def _rank(
         self,
         query: str,
         domain: Optional[str] = None,
         limit: Optional[int] = None,
     ) -> list[tuple[int, float]]:
-        """Hybrid BM25 + TF-IDF (+ optional semantic) ranking, fused via RRF.
-        Returns fused (rule_index, score) for the ranked corpus, best first."""
+        """Hybrid BM25 + TF-IDF ranking, fused via RRF (both run over the
+        concept-expanded token stream). Returns fused (rule_index, score) for
+        the ranked corpus, best first."""
         if not self._ranked_rules or not self._bm25:
             return []
 
@@ -603,14 +606,8 @@ class Clawness:
             candidates=candidate_set if domain else None,
         )
 
-        # --- optional semantic (embedding) ranker ---
-        ranked_lists = [bm25_ranked, tfidf_ranked]
-        embed_ranked = self._embed_rank(query, candidate_indices, limit * 2)
-        if embed_ranked:
-            ranked_lists.append(embed_ranked)
-
         # --- RRF fusion ---
-        return rrf(ranked_lists)
+        return rrf([bm25_ranked, tfidf_ranked])
 
     def rank_ids(
         self,

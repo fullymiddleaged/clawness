@@ -54,6 +54,40 @@ def clawness_dir(root: Path) -> Path:
     return root / ".clawness"
 
 
+def _claude_config_dirs() -> list[Path]:
+    """Claude Code config dir(s); honors CLAUDE_CONFIG_DIR (comma-separated),
+    falling back to ~/.claude."""
+    dirs: list[Path] = []
+    cfg = os.environ.get("CLAUDE_CONFIG_DIR")
+    if cfg:
+        dirs += [Path(c.strip()).expanduser() for c in cfg.split(",") if c.strip()]
+    dirs.append(Path.home() / ".claude")
+    return dirs
+
+
+def is_plan_file(target: "str | Path | None") -> bool:
+    """True if *target* is a Claude Code plan-mode plan file (under
+    ``<config>/plans/``).
+
+    These writes happen DURING plan mode, *before* approval — they are how the
+    plan that clears the gate gets written. Gating them is a catch-22 (you can't
+    write the plan, so you can never approve one), so the gate must always
+    exempt them."""
+    if not target:
+        return False
+    try:
+        p = Path(target).resolve()
+    except Exception:
+        return False
+    for base in _claude_config_dirs():
+        try:
+            p.relative_to((base / "plans").resolve())
+            return True
+        except Exception:
+            continue
+    return False
+
+
 def _now() -> str:
     return time.strftime("%Y-%m-%dT%H:%M:%S")
 
@@ -178,13 +212,22 @@ DENY_REASON = (
 )
 
 
-def gate_decision(root: Path, tool_name: str, session_id: str = "") -> tuple[bool, str]:
+def gate_decision(
+    root: Path,
+    tool_name: str,
+    session_id: str = "",
+    target_path: "str | Path | None" = None,
+) -> tuple[bool, str]:
     """Return (block, reason). block=True means deny the tool call.
     Fails open: any unexpected condition returns (False, "")."""
     try:
         if not gate_enabled(root):
             return (False, "")
         if tool_name not in WRITE_TOOLS:
+            return (False, "")
+        # Never gate writes to Claude Code's own plan file — those happen during
+        # plan mode, before approval, and are how the gate gets cleared.
+        if is_plan_file(target_path):
             return (False, "")
         if session_approved(root, session_id) or manually_approved(root):
             return (False, "")

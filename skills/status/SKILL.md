@@ -14,9 +14,8 @@ Show the user what's currently active in their Clawness setup.
 > plugin-only install), use the identical `python -m clawness.cli ...`
 > (`python3` on macOS/Linux) instead.
 
-Keep this FAST — it's a quick health check, not a full scan. Do **not** run a
-test query (it loads the embedding model and is slow); step 1 already proves
-retrieval is working at zero cost.
+Keep this FAST — it's a quick health check, not a full scan. Step 1 already
+proves retrieval at zero cost, so a test query is unnecessary.
 
 ## Steps
 
@@ -25,12 +24,20 @@ retrieval is working at zero cost.
    many mandatory + relevant rules, and a few rule IDs. If you see it, injection
    is working — this alone is the health check.
 
-2. **Show the corpus + token cost.** Run (fast — does not load the model):
+   **If you do NOT see an injected block, say so plainly and do not rationalize
+   it.** The hook injects the global rules on *every* prompt in *every*
+   directory — the working directory (including being in the Clawness source
+   repo) does **not** disable injection; it only affects the optional
+   `.clawness/rules/` project overlay. A missing block means the hook is **not
+   running** — either not loaded this session (needs a restart / `/reload-plugins`)
+   or erroring (check `/hooks` and `claude --debug`). Never attribute a missing
+   block to the current directory.
+
+2. **Show the corpus + token cost.** Run (fast):
    ```bash
    clawness stats
    ```
-   Report total rules, domains, whether semantic is available, and the
-   `Tokens / turn` line.
+   Report total rules, domains, and the `Tokens / turn` line.
 
 3. **Project rules (only if present).** If `.clawness/rules/` exists in the
    project (walk up to the git root), mention it; otherwise skip silently.

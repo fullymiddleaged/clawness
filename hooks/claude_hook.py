@@ -122,6 +122,8 @@ def main() -> None:
     if not global_dir.exists():
         sys.exit(0)
 
+    # Pure-Python lexical + concept retrieval — ~1ms, no model, no deps beyond
+    # PyYAML. Fast enough to run on every prompt without risking the hook timeout.
     wl = Clawness(global_dir, context_budget=budget, top_k=top_k)
 
     # --- Load project rules (if present) ---

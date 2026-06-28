@@ -1,7 +1,7 @@
 """Retrieval-quality regression test — runs the labeled ground-truth set
 through the lexical ranker and asserts MRR@5 / hit-rate stay above the floors.
-Lexical (embedder=None) keeps it deterministic and dependency-free, matching
-the CI `clawness eval` gate.
+Pure-Python lexical + concept retrieval is deterministic and dependency-free,
+matching the CI `clawness eval` gate.
 """
 
 import json
@@ -22,7 +22,7 @@ K = 5
 
 
 def _measure() -> tuple[float, float, list[str]]:
-    wl = Clawness(RULES_DIR, embedder=None, top_k=K)  # lexical = deterministic
+    wl = Clawness(RULES_DIR, top_k=K)
     queries = json.loads(GROUND_TRUTH.read_text(encoding="utf-8"))["queries"]
     rr_sum, hits, misses = 0.0, 0, []
     for entry in queries:

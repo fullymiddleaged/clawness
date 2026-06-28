@@ -7,13 +7,17 @@ the Python dependencies are present. It is wired as an async SessionStart hook
 so it never blocks the session.
 
 Policy:
-  - pyyaml is required and installed if missing.
-  - model2vec + numpy (semantic retrieval) are installed BY DEFAULT, because
-    semantic is the chosen default. Opt out by setting CLAW_NO_SEMANTIC=1.
-  - Everything is best-effort: failures are logged, never raised. Until a dep
-    is available, retrieval degrades gracefully (lexical/concept, or skipped).
+  - pyyaml is the only dependency — it's all the pure-Python lexical + concept
+    retrieval needs. Installed if missing.
+  - Everything is best-effort: failures are logged, never raised. Until pyyaml
+    is available the rule hook degrades gracefully (injects nothing rather than
+    erroring the prompt).
   - A failed install is simply retried on the next session — no lockout — so a
     fixed network/permission issue is picked up immediately.
+  - Every step (interpreter, each pip attempt + result, version, final status)
+    is written to bootstrap.log in the plugin data dir — the install record,
+    since Claude Code can't surface hook output to the user. `claude --debug`
+    shows it live.
 
 This script intentionally has no third-party imports of its own.
 """
@@ -53,41 +57,54 @@ def importable(mod: str) -> bool:
         return False
 
 
+def _module_version(name: str) -> str:
+    try:
+        return getattr(__import__(name), "__version__", "unknown")
+    except Exception:
+        return "unknown"
+
+
 def pip_install(packages: list[str]) -> bool:
     """Best-effort pip install for the current interpreter. Tries a plain
     install first (works in a venv/conda and in user-writable Pythons), then
     --user (avoids needing admin on a system-wide Python; pip rejects --user
     inside a venv, so plain must come first), then adds --break-system-packages
-    (Debian / PEP 668). Returns True on success."""
+    (Debian / PEP 668). Logs each attempt + result. Returns True on success."""
     base = [sys.executable, "-m", "pip", "install", *packages]
     for extra in ([], ["--user"], ["--user", "--break-system-packages"]):
+        log("  trying: pip install " + " ".join([*packages, *extra]))
         try:
             r = subprocess.run(
                 base + extra,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
                 timeout=540,
+                text=True,
             )
             if r.returncode == 0:
+                log("  ok")
                 return True
+            tail = (r.stdout or "").strip().splitlines()
+            log(f"  exit {r.returncode}: {tail[-1] if tail else '(no output)'}")
         except Exception as e:
-            log(f"pip error for {packages}: {e}")
+            log(f"  error: {e}")
     return False
 
 
-def ensure(name: str, packages: list[str]) -> None:
-    """Install *packages* if *name* isn't importable. Best-effort, and simply
-    retried on the next session if it fails — until then retrieval degrades
-    gracefully (lexical-only, or no rules if pyyaml is the one missing). pip
-    fails fast when offline and caches downloads, so re-attempting is cheap."""
+def ensure(name: str, packages: list[str]) -> bool:
+    """Install *packages* if *name* isn't importable. Returns True if it's
+    available afterward. Best-effort and simply retried next session on
+    failure — pip fails fast when offline and caches downloads, so re-attempting
+    is cheap."""
     if importable(name):
-        return
-    log(f"installing {name} ({' '.join(packages)})...")
-    ok = pip_install(packages)
-    log(
-        f"{name} install "
-        + ("succeeded" if ok else "failed (will retry next session; falls back gracefully)")
-    )
+        log(f"{name}: already present (v{_module_version(name)})")
+        return True
+    log(f"{name}: missing — installing {' '.join(packages)}")
+    if pip_install(packages) and importable(name):
+        log(f"{name}: installed (v{_module_version(name)})")
+        return True
+    log(f"{name}: NOT available — will retry next session (rules won't inject until then)")
+    return False
 
 
 def main() -> None:
@@ -97,20 +114,18 @@ def main() -> None:
     except Exception:
         pass
 
-    log("clawness bootstrap: ensuring Python deps are present "
-        "(PyYAML required; model2vec+numpy optional, for semantic search)")
+    log("=== clawness bootstrap ===")
+    log(f"python : {sys.executable}")
+    log(f"version: {sys.version.split()[0]}")
 
-    # Required.
-    ensure("yaml", ["pyyaml>=6.0"])
+    # PyYAML is the only dependency — retrieval is pure-Python lexical + concept.
+    ok = ensure("yaml", ["pyyaml>=6.0"])
 
-    # Semantic embeddings — on by default, opt out with CLAW_NO_SEMANTIC.
-    if not os.environ.get("CLAW_NO_SEMANTIC"):
-        ensure("model2vec", ["model2vec>=0.3", "numpy>=1.24"])
-    else:
-        log("CLAW_NO_SEMANTIC set — skipping model2vec (semantic search off)")
-
-    log("clawness bootstrap: done")
-
+    log(
+        "bootstrap "
+        + ("ready — rule injection active" if ok
+           else "incomplete — PyYAML unavailable; rules activate once it installs")
+    )
     sys.exit(0)
 
 

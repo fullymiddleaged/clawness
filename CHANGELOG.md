@@ -5,6 +5,50 @@ All notable changes to Clawness will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2026-06-28
+
+### Fixed
+- **Plan gate no longer blocks Claude Code's plan-mode plan file.** The
+  `PreToolUse` gate denied *all* Write/Edit until a plan was approved — including
+  the plan file you write in order to *get* approval, a catch-22 that broke plan
+  mode. Writes under `<config>/plans/` are now always exempt (project-file edits
+  are still gated as before).
+
+### Removed
+- **model2vec / semantic embeddings, entirely.** It was a poor fit for a
+  per-prompt hook: each turn is a fresh process, so the model reloaded every
+  time (no warm state without a daemon, which we won't add), and on our eval it
+  scored no better than lexical + concept retrieval. Gone: `embeddings.py`, the
+  `[semantic]` pip extra, the `numpy` dependency, `CLAW_SEMANTIC` /
+  `CLAW_EMBED_MODEL`, the installer `--semantic` flag, and all related docs.
+  **PyYAML is now the only dependency.**
+
+### Changed
+- Retrieval is now purely **BM25 + TF-IDF + RRF + concept expansion** — pure
+  Python, ~1 ms per prompt, no models, no downloads, no `numpy`.
+- **Expanded the concept dictionary to 26 groups** (null-safety, naming, docs,
+  refactoring, immutability, build/CI, git, shell, mobile, and a "shortcut"
+  group that surfaces the rationalization rules), plus more terms in existing
+  groups. The concept layer is the "different words, same idea" reach that
+  replaces semantic embeddings — instantly and with zero dependencies.
+
+## [0.2.2] - 2026-06-28
+
+### Fixed
+- **Rule injection silently failing (`UserPromptSubmit hook error` / no rules).**
+  The per-prompt hook loaded the model2vec semantic model on every turn, which
+  blew the hook timeout (and on a fresh machine tried to download ~30 MB inline),
+  so nothing got injected. Retrieval is now **lexical + concept by default**
+  (~1 ms per prompt); semantic is opt-in. On our ground-truth eval the lexical
+  path scores at least as well, so this is faster with no quality loss.
+
+### Changed
+- **Semantic embeddings (model2vec) are now opt-in** via `CLAW_SEMANTIC=1`
+  (was on-by-default). The first-run bootstrap installs only PyYAML by default —
+  no ~30 MB model download behind your back — and the per-prompt hook never loads
+  the model. The manual installer flag flips from `--no-semantic` to `--semantic`
+  (PowerShell: `-Semantic`). `stats` now reports semantic as off/opt-in.
+
 ## [0.2.1] - 2026-06-27
 
 ### Fixed

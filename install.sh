@@ -7,7 +7,6 @@ set -euo pipefail
 #     bash install.sh
 #
 # Options:
-#     --no-semantic     Skip model2vec; lexical + concept retrieval only
 #     --skip-hook       Don't configure Claude Code settings.json
 #     --settings PATH   Use a custom settings.json path
 #     --dry-run         Show what would be written without changing anything
@@ -22,12 +21,10 @@ CORE_MODULE="$SCRIPT_DIR/clawness/core.py"
 SKIP_HOOK=false
 SETTINGS_PATH=""
 DRY_RUN=""
-SEMANTIC=true
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --semantic|--with-semantic) SEMANTIC=true; shift ;;
-        --no-semantic) SEMANTIC=false; shift ;;
+        --semantic|--with-semantic|--no-semantic) shift ;;  # removed; accepted as a no-op
         --skip-hook)   SKIP_HOOK=true; shift ;;
         --settings)    if [ -z "${2:-}" ]; then echo "ERROR: --settings requires a path"; exit 1; fi; SETTINGS_PATH="$2"; shift 2 ;;
         --dry-run)     DRY_RUN="--dry-run"; shift ;;
@@ -76,8 +73,8 @@ echo "  Installs the 'clawness' command + PyYAML into your Python ($PY_CMD)."
 echo "  Downloads from PyPI — this can take a minute."
 
 # Editable install so `clawness` and `python -m clawness.cli` work from any
-# directory, while rules keep loading from this folder. PyYAML comes as a
-# dependency; the [semantic] extra (next) adds model2vec + numpy.
+# directory, while rules keep loading from this folder. PyYAML (the only
+# dependency) comes along automatically.
 #
 # Try a plain install first (works inside a venv/conda and in user-writable
 # Pythons), then --user (avoids needing admin on a system-wide Python — note
@@ -100,25 +97,6 @@ if ! "$PY_CMD" -c 'import yaml' 2>/dev/null; then
     exit 1
 fi
 echo "  ✓ clawness installed — 'clawness' command available (PyYAML ready)"
-
-# Semantic (model2vec) embeddings — ON by default; skip with --no-semantic.
-# Best-effort: a failed install/download falls back to lexical + concepts.
-SEMANTIC_OK=false
-if [ "$SEMANTIC" = true ]; then
-    echo "  Semantic retrieval requested — installing model2vec + numpy (~50 MB, may take a few minutes)..."
-    pip_install_e "$SCRIPT_DIR[semantic]" || true
-    if "$PY_CMD" -c 'import model2vec' 2>/dev/null; then
-        SEMANTIC_OK=true
-        echo "  ✓ model2vec installed"
-        echo "  Pre-downloading static embedding model (first time only)..."
-        ( cd "$SCRIPT_DIR" && "$PY_CMD" -c 'from clawness.embeddings import get_default_embedder as g; e=g(); print("  ✓ semantic model ready (" + e.name + ")") if e else print("  ⚠ model load failed — retrieval falls back to lexical until available")' ) || \
-            echo "  ⚠ Model download failed (offline?) — semantic falls back to lexical until the model is available"
-    else
-        echo "  ⚠ Could not install model2vec — continuing with lexical + concept retrieval"
-    fi
-else
-    echo "  (semantic disabled via --no-semantic — using lexical + concept retrieval)"
-fi
 
 # -- step 3: verify files ------------------------------------------
 echo ""
@@ -251,12 +229,6 @@ echo "  If 'clawness' isn't found, your Python user-scripts dir isn't on PATH �
 echo "  use '$PY_CMD -m clawness.cli ...' instead (identical, works from anywhere)."
 echo ""
 echo "  Add rules:  drop .yml files into $RULES_DIR/<domain>/"
-if [ "$SEMANTIC_OK" = true ]; then
-    echo "  Semantic:   model2vec embeddings enabled (run 'stats' to confirm)"
-elif [ "$SEMANTIC" = true ]; then
-    echo "  Semantic:   requested, but model2vec couldn't be installed — using lexical + concepts"
-else
-    echo "  Semantic:   off (lexical + concepts) — you passed --no-semantic"
-fi
+echo "  Retrieval:  BM25 + TF-IDF + RRF + concept expansion (pure Python, ~1ms)"
 echo "  Uninstall:  run 'bash $SCRIPT_DIR/uninstall.sh', then delete the folder"
 echo ""

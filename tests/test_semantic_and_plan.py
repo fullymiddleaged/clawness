@@ -1,5 +1,5 @@
 """
-Tests for the semantic concept layer and the plan gate.
+Tests for the concept-expansion layer and the plan gate.
 
 Runs under pytest, or standalone:  python tests/test_semantic_and_plan.py
 """
@@ -44,7 +44,7 @@ def test_original_tokens_preserved():
 
 
 def test_concept_bridging_in_retrieval():
-    wl = Clawness(RULES_DIR, embedder=None)  # lexical + concepts only
+    wl = Clawness(RULES_DIR)
     # query words differ from rule wording; concepts should bridge
     res = wl.retrieve("unbounded cache that keeps growing")
     assert "GEN-MEMORY-001" in res
@@ -52,11 +52,8 @@ def test_concept_bridging_in_retrieval():
     assert "GEN-DEPS-001" in res
 
 
-def test_embedder_none_is_lexical_only():
-    wl = Clawness(RULES_DIR, embedder=None)
-    assert wl._embedder is None
-    assert wl.stats["embeddings"] is None
-    # still returns rules
+def test_retrieval_returns_rules():
+    wl = Clawness(RULES_DIR)
     assert "[" in wl.retrieve("write tests")
 
 
@@ -130,6 +127,19 @@ def test_gate_fails_open_on_bad_state():
     (root / ".clawness" / "sessions.json").write_text("{ not json")
     block, _ = P.gate_decision(root, "Write", "x")
     assert isinstance(block, bool)  # never raises
+
+
+def test_plan_file_writes_are_never_gated():
+    # The plan-mode plan file is written BEFORE approval; gating it is a
+    # catch-22. It must always be exempt, even on a fresh (gate-on) project.
+    root = _fresh_project()
+    plan = Path.home() / ".claude" / "plans" / "demo.md"
+    assert P.is_plan_file(plan) is True
+    assert P.is_plan_file(root / "src" / "app.py") is False
+    # a normal project edit is still blocked...
+    assert P.gate_decision(root, "Write", "s", str(root / "src" / "app.py"))[0] is True
+    # ...but the plan file is allowed through
+    assert P.gate_decision(root, "Write", "s", str(plan))[0] is False
 
 
 if __name__ == "__main__":

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "clawness"
-version = "0.2.1"
+version = "0.3.0"
 description = "A Claude Code plugin that puts the right coding rules in context on every prompt, automatically"
 readme = "README.md"
 license = "MIT"
@@ -12,14 +12,6 @@ license-files = ["LICENSE"]
 requires-python = ">=3.10"
 dependencies = [
     "pyyaml>=6.0",
-]
-
-[project.optional-dependencies]
-# Enables the semantic (vector) ranker. Lexical + concept retrieval works
-# without it; install to add model2vec static embeddings (numpy-only).
-semantic = [
-    "model2vec>=0.3",
-    "numpy>=1.24",
 ]
 
 [project.scripts]

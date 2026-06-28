@@ -10,17 +10,28 @@ Inspired by [infinri/Writ](https://github.com/infinri/Writ), rebuilt from ~2GB o
 
 ## 30-Second Version
 
+Installing the plugin is **two commands plus a restart** — the plugin downloads its Python backend on first launch, so it isn't fully live until step 3.
+
+**1. Install** (from any Claude Code session):
+
 ```bash
-# Plugin install (recommended)
 claude plugin marketplace add fullymiddleaged/clawness
 claude plugin install clawness@clawness
 ```
 
-Done. Open Claude Code in any project and start working. Type `/clawness:status` to verify.
+**2. Restart Claude Code** (or run `/reload-plugins`) so the hooks actually load.
 
-> **You need Python 3.10+ on your PATH** — the rule-injection hook is a small Python script (`python` on Windows, `python3` on macOS/Linux). If Python is missing, Clawness installs but silently injects nothing. Don't have it? See [Installing Python](#installing-python-if-you-dont-have-it).
->
-> `clawness@clawness` isn't a typo — it's `plugin@marketplace`, and both happen to be named *clawness*.
+**3. Let first-run setup finish.** On the first session, a background hook installs Clawness's one dependency (**PyYAML**) into your environment. This needs **Python 3.10+ on your PATH** and takes just a few seconds. Retrieval is pure-Python **lexical + concept** matching — no models, no downloads.
+
+**4. Verify** — ask Claude:
+
+```
+what clawness rules do you see in your context?
+```
+
+If it describes the injected rule block, you're live. (`/clawness:status` also works.)
+
+> `clawness@clawness` isn't a typo — it's `plugin@marketplace`, and both happen to be named *clawness*. No Python 3.10+? See [Installing Python](#installing-python-if-you-dont-have-it) — without it, the plugin installs but injects nothing.
 
 ---
 
@@ -62,8 +73,8 @@ You type a prompt in Claude Code
      └──────┬─────┘
             ▼
 ┌──────────────────────────┐
-│  BM25 + TF-IDF + RRF    │  hybrid retrieval (+ concept expansion, optional
-│  + concepts / vectors   │  model2vec embeddings) picks top rules in <1ms
+│  BM25 + TF-IDF + RRF    │  hybrid lexical retrieval + concept expansion
+│  + concept expansion    │  picks the top rules in ~1ms (pure Python)
 │  context budget: 4000    │  stops adding rules when token budget is full
 └──────────┬───────────────┘
            │
@@ -75,11 +86,24 @@ You type a prompt in Claude Code
 └──────────────────────────┘
 ```
 
-**In plain terms:** for each prompt, Clawness scores every rule by how well it matches what you're working on — both by shared keywords and by meaning — and quietly adds the few that fit (plus the always-on mandatory ones). BM25, TF-IDF, RRF, and model2vec are just the techniques that do the scoring; you never touch them.
+**In plain terms:** for each prompt, Clawness scores every rule by how well it matches what you're working on — by shared keywords and concepts — and quietly adds the few that fit (plus the always-on mandatory ones). BM25, TF-IDF, and RRF are just the techniques that do the scoring; the concept layer bridges synonyms (login ↔ auth ↔ jwt) so wording differences don't matter. You never touch any of it. No ML models, no downloads — it runs in about a millisecond.
 
 **Two layers of rules:**
 - **Global** (`~/.claude/clawness/rules/`) — installed once, applies to every project
 - **Project** (`<your-project>/.clawness/rules/`) — optional, layers on top for project-specific conventions. Commit to git so your whole team shares them.
+
+### Retrieval engine
+
+Pure Python, one dependency (PyYAML) — no ML models, no embeddings, no services, nothing to download at query time:
+
+- **BM25-Okapi + TF-IDF cosine, fused via Reciprocal Rank Fusion** — two complementary lexical rankers, so a rule surfaces whether your prompt shares its exact terms or just its overall vocabulary.
+- **Concept expansion (26 concept groups)** maps synonyms onto shared markers — `login ↔ auth ↔ jwt ↔ session`, `postgres ↔ db ↔ query`, `unwrap ↔ error ↔ exception` — applied to both the rules and your prompt. This is the "different words, same idea" reach a vector model gives, but instant and dependency-free. (Extend `_CONCEPT_GROUPS` in `clawness/core.py` to widen it.)
+- **Light stemming** collapses plural/verb forms (`caches` → `cache`, `maintained` → `maintain`).
+- **Mandatory rules** are always injected; the rest are ranked and capped by a token budget.
+
+**Measured quality** — run `clawness eval`: on a 44-query labeled set, **MRR@5 = 0.977** and **hit-rate = 1.000** (every query surfaces its expected rule, usually at rank 1). CI enforces floors on these so retrieval can't silently regress as rules are added.
+
+**Cost** — **~1 ms per prompt**; ~472 tokens of always-on mandatory rules plus the few selected ranked rules. Run `clawness stats` for your exact per-turn estimate.
 
 ---
 
@@ -126,18 +150,22 @@ claude plugin marketplace add fullymiddleaged/clawness
 claude plugin install clawness@clawness
 ```
 
-That's it. Skills, agents, hooks, and rules are all registered automatically. Run `/reload-plugins` if you're already in a session.
+The install registers the skills, agents, hooks, and rules — but it isn't live until you reload and the backend finishes setting up:
+
+1. **Restart Claude Code** (or run `/reload-plugins`) so the hooks load.
+2. **Let first-run setup finish** — on the first session a background hook installs PyYAML (a few seconds). Details below.
+3. **Verify** — ask Claude *"what clawness rules do you see in your context?"*, or run `/clawness:status`.
 
 > **What the plugin installs on first run.** Claude Code's install screen lists the components (commands, agents, hooks) but doesn't spell out what the hooks *do*. For transparency:
 > - **Requires Python 3.10+ on your PATH** — the hooks are Python scripts. No Python, no rules (Clawness installs but silently injects nothing). Need it? See [Installing Python](#installing-python-if-you-dont-have-it).
-> - **On your first session, a background `SessionStart` hook runs `pip install`** to fetch its Python dependencies into your environment: **PyYAML** (required) and **model2vec + numpy** (semantic search — skip these with `CLAW_NO_SEMANTIC=1`). Nothing is installed at plugin-install time; it happens on first session and is logged to `bootstrap.log` in the plugin's data directory.
+> - **On your first session, a background `SessionStart` hook runs `pip install`** to fetch **PyYAML** (the only dependency) into your environment — a few seconds. That's it: retrieval is pure-Python lexical + concept matching, no models. Nothing is installed at plugin-install time; it happens on first session and is logged to `bootstrap.log` in the plugin's data directory.
 > - **The plan gate is on by default** — it blocks file edits until you approve a plan (via plan mode, or disable with `CLAW_NO_PLAN_GATE=1`). See [Plan Gate](#plan-gate-on-by-default).
 
 ### Option 2: Manual Install
 
 For more control, or if the plugin system isn't available in your environment.
 
-**Requirements:** Python 3.10+ (see [Installing Python](#installing-python-if-you-dont-have-it)) and Claude Code. No Docker, no Node, no databases. Semantic retrieval (model2vec embeddings) is installed by default and is optional — pass `--no-semantic` to skip it; retrieval falls back to lexical + concept matching.
+**Requirements:** Python 3.10+ (see [Installing Python](#installing-python-if-you-dont-have-it)) and Claude Code. No Docker, no Node, no databases, no ML models. Retrieval is pure-Python lexical + concept matching; PyYAML is the only dependency.
 
 **Windows (PowerShell):**
 
@@ -160,7 +188,7 @@ bash install.sh
 | Step | What | Why |
 |------|------|-----|
 | 1 | Check Python 3.10+ | Finds `python` / `python3` / `py` |
-| 2 | Install clawness + deps | Editable `pip install` — adds the `clawness` command, pulls in PyYAML, plus model2vec for semantic retrieval (skip with `--no-semantic`) |
+| 2 | Install clawness + deps | Editable `pip install` — adds the `clawness` command and PyYAML (the only dependency) |
 | 3 | Verify files | Confirms rules and hook scripts are present |
 | 4 | Lint rules | Validates every `.yml` rule file |
 | 5 | Test retrieval | Runs a test query to confirm the engine works |
@@ -192,7 +220,7 @@ powershell -ExecutionPolicy Bypass -File "$env:USERPROFILE\.claude\clawness\unin
 Remove-Item -Recurse -Force "$env:USERPROFILE\.claude\clawness"
 ```
 
-Left in place on purpose (remove by hand if you want): the `pyyaml` / `model2vec` / `numpy` pip packages (shared with other tools), the model2vec model cache under `~/.cache/huggingface`, and any per-project rules in each project's `.clawness/`.
+Left in place on purpose (remove by hand if you want): the `pyyaml` pip package (shared with other tools), and any per-project rules in each project's `.clawness/`.
 
 ---
 
@@ -235,13 +263,13 @@ The mandatory rules always appear. The ranked rules change based on your prompt.
 
 ### Verify It's Working
 
-Ask Claude Code directly:
+Three ways, depending on what you want to see:
 
-```
-> what clawness rules do you see in your context?
-```
+- **Confirm it's live (user-facing):** run `/clawness:status`, or just ask Claude *"what clawness rules do you see in your context?"* — if the hook is active it'll describe the injected rules.
+- **Watch first-run setup happen:** launch with `claude --debug` once. Claude Code doesn't show hook output in the normal UI (hook stdout goes to the model, and the dependency bootstrap runs in the background), so `--debug` is how you see the live install activity.
+- **Read the install record:** the first-session bootstrap logs every step to **`bootstrap.log`** in the plugin's data directory — the Python interpreter used, each `pip` attempt and its result, the installed PyYAML version, and a final `bootstrap ready` line. Check it if rules aren't appearing.
 
-If the hook is active, Claude will describe the rules it received.
+> Note: there's no in-UI "installer" banner — that's a Claude Code limitation (hooks can't print to the user's screen), not a Clawness setting. The three methods above are how you observe setup.
 
 ### Output Compression
 
@@ -520,10 +548,8 @@ The 7 **mandatory** rules (always injected) are the 5 `security` rules, the 1 `t
 | `CLAW_BUDGET` | `4000` | Max tokens for the rule block |
 | `CLAW_VERBOSE` | (unset) | Render mandatory rules in full (`WHEN`/`BAD`/`GOOD`) instead of compact — more tokens per turn |
 | `CLAW_COMPACT` | (unset) | Also render ranked rules compactly (directive only) — fewer tokens per turn |
-| `CLAW_NO_SEMANTIC` | (unset) | Disable model2vec embeddings (lexical + concept only) |
 | `CLAW_NO_PLAN_GATE` | (unset) | Disable the plan gate globally |
 | `CLAW_NO_GIT_CHECK` | (unset) | Stop offering to `git init` when a project isn't under version control |
-| `CLAW_EMBED_MODEL` | `minishlab/potion-base-8M` | model2vec model for semantic retrieval |
 | `CLAUDE_CONFIG_DIR` | `~/.claude` | Claude Code's config dir — the installer/uninstaller follow it if you've relocated it |
 | `CLAUDE_CODE_SUBAGENT_MODEL` | (none) | Override model for ALL sub-agents |
 
@@ -619,7 +645,7 @@ effort: max         # maximum reasoning — expensive, use sparingly
 
 | | Writ | Clawness | CLAUDE.md |
 |---|---|---|---|
-| Rule selection | Hybrid RAG (BM25 + vector + graph) | Hybrid (BM25 + TF-IDF + RRF) | All rules, every turn |
+| Rule selection | Hybrid RAG (BM25 + vector + graph) | Hybrid (BM25 + TF-IDF + RRF + concepts) | All rules, every turn |
 | Token cost per turn | selected rules only | ~1,300/turn (~470 mandatory + ~5 selected) | all 114 rules (~13k+) every turn |
 | Infrastructure | Neo4j + Docker + ONNX (~2 GB) | PyYAML (~200 KB) | None |
 | Install time | ~5 minutes | ~5 seconds | Copy/paste |
@@ -634,7 +660,7 @@ effort: max         # maximum reasoning — expensive, use sparingly
 ## Troubleshooting
 
 **Plugin install: skills/hooks not showing up**
-Run `/reload-plugins`, or check `claude plugin list`. On first session, a background `SessionStart` hook installs the Python deps (PyYAML, and model2vec + numpy for semantic) into your environment — this can take a minute, and retrieval is lexical-only until model2vec finishes. Check `bootstrap.log` in the plugin's data directory for progress, and run `claude --debug` to see hook activity. (Make sure Python 3.10+ is on your PATH — without it the hooks can't run.)
+Run `/reload-plugins`, or check `claude plugin list`. On first session, a background `SessionStart` hook installs **PyYAML** into your environment (a few seconds) — that's all the default lexical retrieval needs. Check `bootstrap.log` in the plugin's data directory for progress, and run `claude --debug` to see hook activity. (Make sure Python 3.10+ is on your PATH — without it the hooks can't run.)
 
 **Hook not firing / Claude doesn't see rules**
 Check `~/.claude/settings.json` contains the hook config. Run the installer again — it's idempotent and will report what's already configured vs what it adds.

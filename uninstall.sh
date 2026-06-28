@@ -8,7 +8,7 @@
 #      and error on every prompt once the folder is gone).
 #   2. Removes the agent files copied to ~/.claude/agents/.
 #   3. Removes the skill folders copied to ~/.claude/skills/.
-#   4. Removes the embeddings cache (~/.cache/clawness).
+#   4. Removes the cache directory (~/.cache/clawness).
 #   5. Uninstalls the clawness pip package (the editable install would otherwise
 #      dangle once the folder is gone).
 #
@@ -62,7 +62,7 @@ if [ -d "$SCRIPT_DIR/skills" ] && [ -d "$SKILLS_DIR" ]; then
 fi
 
 # 4. cache
-echo "[4/5] Removing embeddings cache..."
+echo "[4/5] Removing cache directory..."
 if [ -d "$CACHE_DIR" ]; then
     rm -rf "$CACHE_DIR" && echo "  removed $CACHE_DIR"
 else
@@ -80,9 +80,8 @@ fi
 
 echo ""
 echo "Left in place on purpose:"
-echo "  - Python packages (pyyaml, model2vec, numpy) — shared with other tools."
-echo "    Remove if you want: $PY_CMD -m pip uninstall model2vec numpy"
-echo "  - The model2vec model cache in ~/.cache/huggingface (reusable downloads)."
+echo "  - PyYAML (pip package) — shared with other tools."
+echo "    Remove if you want: $PY_CMD -m pip uninstall pyyaml"
 echo "  - Per-project rules and state in each project's .clawness/ (your data)."
 echo ""
 echo "Finally, delete this folder to finish:"

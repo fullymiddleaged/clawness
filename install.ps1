@@ -14,10 +14,9 @@ param(
     [string]$WritDir = '',
     [string]$SettingsPath = '',
     [switch]$SkipHook,
-    [switch]$NoSemantic
+    [switch]$Semantic,      # removed; accepted as a no-op for back-compat
+    [switch]$NoSemantic     # removed; accepted as a no-op for back-compat
 )
-
-$Semantic = -not $NoSemantic
 
 # NOTE: We intentionally use 'Continue', not 'Stop'.
 # 'Stop' treats ANY stderr output from native commands as a fatal error,
@@ -79,8 +78,8 @@ Write-Host ("  Installs the 'clawness' command + PyYAML into your Python (" + $p
 Write-Host '  Downloads from PyPI - this can take a minute.' -ForegroundColor Gray
 
 # Editable install so `clawness` and `python -m clawness.cli` work from any
-# directory, while rules keep loading from this folder. PyYAML comes as a
-# dependency; the [semantic] extra (next) adds model2vec + numpy.
+# directory, while rules keep loading from this folder. PyYAML (the only
+# dependency) comes along automatically.
 #
 # Try a plain install first (works inside a venv and user-writable Pythons),
 # then --user (avoids needing admin on a system-wide Python — pip rejects
@@ -99,53 +98,6 @@ if ($LASTEXITCODE -ne 0) {
     exit 1
 }
 Write-Host "  OK: clawness installed - 'clawness' command available (PyYAML ready)" -ForegroundColor Green
-
-# Semantic (model2vec) embeddings - ON by default; skip with -NoSemantic.
-$SemanticOk = $false
-if ($Semantic) {
-    Write-Host '  Semantic retrieval requested - installing model2vec + numpy (~50 MB, may take a few minutes)...' -ForegroundColor DarkYellow
-    $pkgSpec = "$WritDir[semantic]"
-    foreach ($fs in $flagSets) {
-        $flags = if ($fs) { $fs -split ' ' } else { @() }
-        & $pyCmd -m pip install -e $pkgSpec @flags 2>&1 | Out-Null
-        & $pyCmd -c 'import model2vec' 2>$null
-        if ($LASTEXITCODE -eq 0) { break }
-    }
-    if ($LASTEXITCODE -eq 0) {
-        $SemanticOk = $true
-        Write-Host '  OK: model2vec installed' -ForegroundColor Green
-        Write-Host '  Pre-downloading static embedding model (first time only)...' -ForegroundColor DarkYellow
-        # Run the prewarm from a temp script file (here-string) rather than an
-        # inline `-c`: PowerShell mangles complex inline Python arguments. The
-        # file lives in $WritDir so `import clawness` resolves.
-        $prewarmCode = @'
-try:
-    from clawness.embeddings import get_default_embedder
-    e = get_default_embedder()
-    if e:
-        print("  OK: semantic model ready (" + e.name + ")")
-    else:
-        print("  WARN: model load failed - falls back to lexical")
-except Exception:
-    print("  WARN: model prewarm skipped - falls back to lexical")
-'@
-        $prewarmFile = Join-Path $WritDir '.clawness_prewarm.py'
-        try {
-            Set-Content -Path $prewarmFile -Value $prewarmCode -Encoding ASCII
-            Push-Location $WritDir
-            & $pyCmd $prewarmFile
-            Pop-Location
-        } catch {
-            Write-Host '  WARN: model prewarm skipped - falls back to lexical' -ForegroundColor DarkYellow
-        } finally {
-            Remove-Item $prewarmFile -ErrorAction SilentlyContinue
-        }
-    } else {
-        Write-Host '  WARN: Could not install model2vec - continuing with lexical + concept retrieval' -ForegroundColor DarkYellow
-    }
-} else {
-    Write-Host '  (semantic disabled via -NoSemantic - using lexical + concept retrieval)' -ForegroundColor Gray
-}
 
 # -- step 3: verify files ------------------------------------------
 Write-Host ''
@@ -272,12 +224,6 @@ Write-Host "  If 'clawness' isn't found, your Python user-scripts dir isn't on P
 Write-Host ('  use ' + $pyCmd + ' -m clawness.cli ... instead (identical, works anywhere).') -ForegroundColor Gray
 Write-Host ''
 Write-Host ('  Add rules:  drop .yml files into ' + $RulesDir + '\<domain>\') -ForegroundColor White
-if ($SemanticOk) {
-    Write-Host '  Semantic:   model2vec embeddings enabled (run stats to confirm)' -ForegroundColor White
-} elseif ($Semantic) {
-    Write-Host '  Semantic:   requested, but model2vec could not be installed - using lexical + concepts' -ForegroundColor White
-} else {
-    Write-Host '  Semantic:   off (lexical + concepts) - you passed -NoSemantic' -ForegroundColor White
-}
+Write-Host '  Retrieval:  BM25 + TF-IDF + RRF + concept expansion (pure Python, ~1ms)' -ForegroundColor White
 Write-Host ('  Uninstall:  run .\uninstall.ps1 in ' + $WritDir + ', then delete the folder') -ForegroundColor White
 Write-Host ''

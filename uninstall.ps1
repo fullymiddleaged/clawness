@@ -7,7 +7,7 @@
 #      on every prompt once the folder is gone).
 #   2. Removes the agent files copied to ~/.claude/agents/.
 #   3. Removes the skill folders copied to ~/.claude/skills/.
-#   4. Removes the embeddings cache (~/.cache/clawness).
+#   4. Removes the cache directory (~/.cache/clawness).
 #   5. Uninstalls the clawness pip package (the editable install would otherwise
 #      dangle once the folder is gone).
 #
@@ -58,7 +58,7 @@ if ((Test-Path $srcSkills) -and (Test-Path $SkillsDir)) {
 }
 
 # 4. cache
-Write-Host '[4/5] Removing embeddings cache...'
+Write-Host '[4/5] Removing cache directory...'
 if (Test-Path $CacheDir) { Remove-Item $CacheDir -Recurse -Force; Write-Host "  removed $CacheDir" }
 else { Write-Host '  (none)' }
 
@@ -74,9 +74,8 @@ if ($pyCmd) {
 
 Write-Host ''
 Write-Host 'Left in place on purpose:'
-Write-Host '  - Python packages (pyyaml, model2vec, numpy) - shared with other tools.'
-Write-Host "    Remove if you want: $pyCmd -m pip uninstall model2vec numpy"
-Write-Host '  - The model2vec model cache in ~/.cache/huggingface (reusable downloads).'
+Write-Host '  - PyYAML (pip package) - shared with other tools.'
+Write-Host "    Remove if you want: $pyCmd -m pip uninstall pyyaml"
 Write-Host '  - Per-project rules and state in each project .clawness/ (your data).'
 Write-Host ''
 Write-Host 'Finally, delete this folder to finish:'

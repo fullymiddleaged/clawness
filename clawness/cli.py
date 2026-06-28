@@ -59,23 +59,14 @@ def cmd_query(args: argparse.Namespace) -> None:
 
 def cmd_stats(args: argparse.Namespace) -> None:
     rules_dir = Path(args.rules_dir)
-    # embedder=None: counting rules and estimating tokens never needs the model,
-    # so don't load/download it here — keeps `stats` instant (used by /status).
-    wl = Clawness(rules_dir, embedder=None)
+    wl = Clawness(rules_dir)
     s = wl.stats
-
-    # Report whether semantic is *available* without actually loading the model.
-    try:
-        import model2vec  # noqa: F401
-        semantic = "available (loads on first query)"
-    except Exception:
-        semantic = "off (lexical + concepts only)"
 
     print(f"Rules directory : {s['rules_dir']}")
     print(f"Ranked rules    : {s['ranked_rules']}")
     print(f"Mandatory rules : {s['mandatory_rules']}")
     print(f"Total           : {s['total_rules']}")
-    print(f"Semantic embed  : {semantic}")
+    print(f"Retrieval       : BM25 + TF-IDF + RRF + concept expansion (lexical, ~1ms)")
     ranked_room = max(0, s["context_budget"] - s["mandatory_tokens"])
     print(
         f"Tokens / turn   : ~{s['mandatory_tokens']} fixed (mandatory, every turn) "
@@ -311,8 +302,7 @@ def cmd_eval(args: argparse.Namespace) -> None:
 
     n = len(queries)
     mrr, hit_rate = rr_sum / n, hits / n
-    sem = wl.stats["embeddings"]
-    print(f"Eval: {n} queries  |  semantic: {sem or 'off (lexical)'}  |  top-k={k}")
+    print(f"Eval: {n} queries  |  top-k={k}")
     print(f"  MRR@{k}    : {mrr:.3f}")
     print(f"  hit-rate  : {hit_rate:.3f}  ({hits}/{n})")
     if misses:
