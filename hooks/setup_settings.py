@@ -80,6 +80,7 @@ CLAW_HOOK_SCRIPTS = (
     "plan_gate.py",
     "git_check.py",
     "ensure_deps.py",
+    "memory_init.py",
 )
 
 
@@ -221,6 +222,20 @@ def merge(settings_path: Path, hook_script: Path, dry_run: bool = False) -> str:
                 "hooks": [build_hook_entry(git_script, timeout=10)],
             })
             results.append("git-check: added")
+
+    # --- SessionStart: project memory bootstrap (creates .clawness/memory.md) ---
+    memory_script = hook_script.resolve().parent / "memory_init.py"
+    if memory_script.exists():
+        if "SessionStart" not in data["hooks"]:
+            data["hooks"]["SessionStart"] = []
+        start_events = data["hooks"]["SessionStart"]
+        if hook_already_present(start_events, memory_script):
+            results.append("memory-init: already configured")
+        else:
+            start_events.append({
+                "hooks": [build_hook_entry(memory_script, timeout=10)],
+            })
+            results.append("memory-init: added")
 
     if dry_run:
         print(json.dumps(data, indent=2))

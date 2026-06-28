@@ -23,7 +23,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 try:
-    from clawness.core import Clawness, load_rules, Rule
+    from clawness.core import Clawness, load_rules, Rule, render_memory_block
 except Exception:
     # Dependencies not ready yet (e.g. the SessionStart bootstrap is still
     # installing pyyaml). Degrade silently rather than erroring the prompt.
@@ -46,6 +46,25 @@ def find_project_rules(cwd: str) -> Path | None:
         if candidate.is_dir():
             return candidate
         # Also check for .git to stop at repo root
+        if (current / ".git").exists():
+            break
+        parent = current.parent
+        if parent == current:
+            break
+        current = parent
+    return None
+
+
+def find_project_memory(cwd: str) -> Path | None:
+    """Walk up from cwd looking for .clawness/memory.md in the project tree.
+
+    Mirrors find_project_rules so the lessons log sits beside the project rules
+    and is discovered the same way (stop at the repo root)."""
+    current = Path(cwd).resolve()
+    for _ in range(10):
+        candidate = current / ".clawness" / "memory.md"
+        if candidate.is_file():
+            return candidate
         if (current / ".git").exists():
             break
         parent = current.parent
@@ -150,6 +169,15 @@ def main() -> None:
                 wl._tfidf.build(search_texts)
 
     block = wl.retrieve(prompt)
+
+    # --- Inject project memory (lessons-learned log), if present ---
+    memory_path = find_project_memory(cwd)
+    if memory_path:
+        mem_budget = int(os.environ.get("CLAW_MEMORY_BUDGET", "2000"))
+        memory_block = render_memory_block(memory_path, char_budget=mem_budget)
+        if memory_block:
+            block = block + "\n\n" + memory_block
+
     suggestions = suggest_actions(prompt)
     if suggestions:
         block = block + "\n" + suggestions

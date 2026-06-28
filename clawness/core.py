@@ -141,6 +141,69 @@ def load_rules(rules_dir: str | Path) -> tuple[list[Rule], list[Rule]]:
 
 
 # ---------------------------------------------------------------------------
+# Project memory (per-codebase lessons-learned log)
+# ---------------------------------------------------------------------------
+
+# Seed contents for a fresh .clawness/memory.md. Kept lean because the whole
+# file is injected into every prompt — the comment is the "it's working + how to
+# use it" default line the user sees, and `render_memory_block` adds the upkeep
+# footer at injection time, so the file itself stays minimal.
+MEMORY_TEMPLATE = """\
+# Project lessons (Clawness memory)
+<!-- Clawness injects this file into every prompt. Tell Claude "remember this: ..."
+     to add a lesson, or append one terse bullet yourself (newest at the bottom).
+     Keep it lean and deduplicated — it costs tokens every turn. See WF-LESSONS-001. -->
+
+## Lessons
+"""
+
+
+def render_memory_block(memory_path: str | Path, char_budget: int = 2000) -> str:
+    """
+    Load a per-project lessons-learned file and render it as an injectable block.
+
+    The memory file is plain markdown the agent maintains itself (one terse
+    bullet per hard-won lesson / recurring frustration). It is injected verbatim
+    every turn so past lessons become live context — the auto-recalled "memories"
+    pattern, but project-local and version-controllable.
+
+    Bounded by *char_budget*: if the file outgrows it we keep the TAIL (most
+    recent lessons, appended at the bottom) so the block never blows the hook's
+    token budget. Returns "" when the file is missing, empty, or unreadable —
+    callers degrade silently.
+    """
+    path = Path(memory_path)
+    try:
+        text = path.read_text(encoding="utf-8").strip()
+    except (OSError, UnicodeError):
+        return ""
+    if not text:
+        return ""
+
+    truncated = False
+    if len(text) > char_budget:
+        text = text[-char_budget:]
+        # Drop the partial first line so we start on a clean bullet.
+        nl = text.find("\n")
+        if nl != -1:
+            text = text[nl + 1:]
+        truncated = True
+
+    header = "--- CLAWNESS MEMORY (project lessons) ---"
+    footer = (
+        "Keep this current: when the same mistake or frustration recurs, append a "
+        "terse one-line lesson to .clawness/memory.md (newest at the bottom)."
+    )
+    parts = [header]
+    if truncated:
+        parts.append("(older lessons trimmed)")
+    parts.append(text)
+    parts.append(footer)
+    parts.append("--- END CLAWNESS MEMORY ---")
+    return "\n".join(parts)
+
+
+# ---------------------------------------------------------------------------
 # Tokenizer (shared by BM25 and TF-IDF)
 # ---------------------------------------------------------------------------
 

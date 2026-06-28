@@ -19,6 +19,64 @@ import subprocess
 import sys
 from pathlib import Path
 
+# Directories never worth descending into when scanning for nested repos —
+# heavy/vendored trees that won't be a project's own .git and would slow the scan.
+_SKIP_DIRS = {
+    ".git", "node_modules", ".venv", "venv", "env", "__pycache__",
+    "dist", "build", ".next", "out", "target", "vendor", ".cache",
+    "site-packages", ".mypy_cache", ".pytest_cache", ".tox", ".gradle",
+    "Pods", ".idea", ".vscode", "coverage", ".turbo",
+}
+
+
+def _git_in_tree(cwd_path: Path, max_depth: int = 4, max_dirs: int = 600) -> bool:
+    """True if a git work tree governs cwd, an ancestor, OR a nearby descendant.
+
+    `git rev-parse` only searches *upward*, so when Claude opens a workspace or
+    monorepo parent whose actual repositories live in subfolders, the plain check
+    sees no `.git` and wrongly reports "not under version control". We add a
+    bounded *downward* scan (depth- and count-limited, skipping heavy dirs) so a
+    tree that does use git isn't flagged. Fails closed (returns False) only after
+    genuinely finding nothing within the bound.
+    """
+    # cwd or an ancestor — git walks upward on its own.
+    try:
+        r = subprocess.run(
+            ["git", "-C", str(cwd_path), "rev-parse", "--is-inside-work-tree"],
+            capture_output=True, text=True, timeout=5,
+        )
+        if r.returncode == 0 and r.stdout.strip() == "true":
+            return True
+    except Exception:
+        pass  # fall through to the descendant scan
+
+    # Bounded breadth-first descendant scan for a nested `.git` (a directory in
+    # normal clones, a file in submodules/worktrees — `.exists()` covers both).
+    seen = 0
+    frontier = [(cwd_path, 0)]
+    while frontier:
+        current, depth = frontier.pop()
+        seen += 1
+        if seen > max_dirs:
+            break
+        if (current / ".git").exists():
+            return True
+        if depth >= max_depth:
+            continue
+        try:
+            children = list(current.iterdir())
+        except (OSError, PermissionError):
+            continue
+        for entry in children:
+            try:
+                if (entry.is_dir() and not entry.is_symlink()
+                        and entry.name not in _SKIP_DIRS):
+                    frontier.append((entry, depth + 1))
+            except OSError:
+                continue
+    return False
+
+
 NOTE = (
     "[Clawness] This project is not under version control (no git repository "
     "found). The plan gate blocks unplanned edits, but recovering from a bad "
@@ -61,18 +119,14 @@ def main() -> None:
     if not shutil.which("git"):
         sys.exit(0)
 
-    # Already inside a work tree (handles a parent-dir .git too)? Stay silent.
-    try:
-        r = subprocess.run(
-            ["git", "-C", str(cwd_path), "rev-parse", "--is-inside-work-tree"],
-            capture_output=True, text=True, timeout=5,
-        )
-        if r.returncode == 0 and r.stdout.strip() == "true":
-            sys.exit(0)
-    except Exception:
+    # Version control in use at cwd, an ancestor, or a project subfolder? Stay
+    # silent. The descendant scan stops the false "no git" nag when Claude opens
+    # a workspace/monorepo parent whose repos live in child folders.
+    if _git_in_tree(cwd_path):
         sys.exit(0)
 
-    # No git → inject the note (SessionStart stdout is added to Claude's context).
+    # No git anywhere relevant → inject the note (SessionStart stdout becomes
+    # Claude's context).
     print(NOTE)
     sys.exit(0)
 

@@ -234,9 +234,20 @@ def main() -> None:
         out_path = out_dir / rule_filename
         out_path.write_text(rule_content, encoding="utf-8")
         print(f"Written to: {out_path}")
+
+        # Seed an empty lessons-learned log. Clawness injects this file every
+        # turn, so the team accumulates per-codebase gotchas over time (see
+        # WF-LESSONS-001). Don't clobber an existing one.
+        memory_path = project_dir / ".clawness" / "memory.md"
+        if not memory_path.exists():
+            from .core import MEMORY_TEMPLATE
+            memory_path.write_text(MEMORY_TEMPLATE, encoding="utf-8")
+            print(f"Written to: {memory_path}")
+
         print()
         print("Project rules directory created at .clawness/rules/")
         print("Add more .yml rules here — they layer on top of global rules.")
+        print("Lessons log created at .clawness/memory.md — append gotchas as you hit them.")
         print("Add .clawness/ to version control so your team shares the same rules.")
     else:
         print("(Run with --write to create .clawness/rules/ in this project)")

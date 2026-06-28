@@ -44,7 +44,7 @@ Without Clawness, you either:
 - **Remember to mention rules manually** → you forget, Claude forgets
 
 With Clawness:
-- **114 rules live in YAML files**, organized by domain
+- **115 rules live in YAML files**, organized by domain
 - **A hook fires on every prompt**, retrieves only the rules relevant to your current task (under a millisecond on the lexical path)
 - **Mandatory rules** (security, testing) appear on every turn, non-negotiably
 - **Ranked rules** (Next.js patterns, React hooks, FastAPI conventions) appear only when relevant
@@ -292,7 +292,7 @@ clawness plan status    # show current state
 clawness plan approve   # manual override (headless / no plan mode)
 ```
 
-**Version control:** the plan gate stops *unplanned* edits, but recovering from a *bad* edit is git's job — Clawness deliberately doesn't reimplement checkpoints. If you open a project that isn't a git repo, a SessionStart check nudges Claude to ask whether you'd like to `git init` (it never initializes without your say-so). Silence it with `CLAW_NO_GIT_CHECK=1`.
+**Version control:** the plan gate stops *unplanned* edits, but recovering from a *bad* edit is git's job — Clawness deliberately doesn't reimplement checkpoints. If you open a project that isn't a git repo, a SessionStart check nudges Claude to ask whether you'd like to `git init` (it never initializes without your say-so). The check looks upward (cwd and its parents) *and* a few levels down, so opening a workspace or monorepo parent whose repos live in subfolders won't trigger a false "no git" nudge. Silence it with `CLAW_NO_GIT_CHECK=1`.
 
 ---
 
@@ -332,13 +332,14 @@ Add `--write` to create the project rules directory:
 clawness init . --write
 ```
 
-This creates `.clawness/rules/` in your project. The hook automatically picks up rules from this directory when you're working in the project. **Commit `.clawness/` to git** — your whole team gets the same rules.
+This creates `.clawness/rules/` and a starter `.clawness/memory.md` in your project. The hook automatically picks up rules from this directory when you're working in the project. **Commit `.clawness/` to git** — your whole team gets the same rules.
 
 ### Project Rules Directory
 
 ```
 my-app/
 ├── .clawness/
+│   ├── memory.md                 # Per-codebase lessons, injected every turn
 │   └── rules/
 │       ├── _mandatory/           # Project-specific mandatory rules
 │       │   └── MYAPP-DEPLOY-001.yml
@@ -351,6 +352,27 @@ my-app/
 ```
 
 Rules in `.clawness/rules/_mandatory/` are always injected when working in this project. Rules in other subdirectories are ranked as usual.
+
+### Project Memory (lessons learned)
+
+`.clawness/memory.md` is a plain-markdown log of per-codebase gotchas — build
+quirks, recurring mistakes, hard-won fixes. The hook injects it into **every
+prompt** (right after the rules block), so a lesson recorded once is recalled
+every session instead of re-discovered.
+
+**It creates itself.** The first time you open a project (in a git repo),
+Clawness's SessionStart hook writes a starter `.clawness/memory.md` and tells
+Claude to let you know it exists — so you can see it working from day one. To add
+to it, just say **"remember this: …"** and Claude appends a lesson; or edit the
+file directly. (Opt out of auto-create with `CLAW_NO_MEMORY=1`; it never touches
+the home directory or non-git folders, and goes silent once the file exists.)
+
+Claude also maintains it on its own: rule `WF-LESSONS-001` tells it to record a
+lesson immediately when you ask, or the *second* time a mistake recurs — keeping
+entries short, deduplicated, and pruned. Keep it lean; it's injected every turn.
+The block is bounded by `CLAW_MEMORY_BUDGET` (characters, default `2000`); when
+the file overflows, the most recent lessons (the tail) are kept. **Commit it** so
+the whole team shares the same hard-won knowledge.
 
 ---
 
@@ -646,7 +668,7 @@ effort: max         # maximum reasoning — expensive, use sparingly
 | | Writ | Clawness | CLAUDE.md |
 |---|---|---|---|
 | Rule selection | Hybrid RAG (BM25 + vector + graph) | Hybrid (BM25 + TF-IDF + RRF + concepts) | All rules, every turn |
-| Token cost per turn | selected rules only | ~1,300/turn (~470 mandatory + ~5 selected) | all 114 rules (~13k+) every turn |
+| Token cost per turn | selected rules only | ~1,300/turn (~470 mandatory + ~5 selected) | all 115 rules (~13k+) every turn |
 | Infrastructure | Neo4j + Docker + ONNX (~2 GB) | PyYAML (~200 KB) | None |
 | Install time | ~5 minutes | ~5 seconds | Copy/paste |
 | Mandatory rules | Yes | Yes | Manual discipline |

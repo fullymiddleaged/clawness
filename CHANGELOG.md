@@ -5,6 +5,36 @@ All notable changes to Clawness will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2026-06-28
+
+### Added
+- **Per-codebase memory (`.clawness/memory.md`).** A project-local lessons-learned
+  log that the hook injects into every prompt, right after the rules block — the
+  auto-recalled "memories" pattern (cf. Cursor/Windsurf), but version-controllable
+  and shared with your team. Recurring gotchas, build quirks, and hard-won fixes
+  survive across sessions instead of being re-discovered each time. Bounded by
+  `CLAW_MEMORY_BUDGET` (chars, default 2000); when it overflows, the most recent
+  lessons (file tail) are kept. `clawness init --write` seeds a starter file.
+- **Auto-bootstrap on first session (`hooks/memory_init.py`, SessionStart).** The
+  first time you open a project, Clawness creates `.clawness/memory.md` (seeded with
+  a how-to line) and injects a note so Claude tells you it exists and that you can
+  grow it by saying "remember this: …". Gated to real git work trees (never home /
+  filesystem root), silent once the file exists, opt-out via `CLAW_NO_MEMORY`.
+  Mirrors the existing `git_check` SessionStart pattern — hooks can't prompt the
+  user directly, so Claude relays the note.
+- **Rule `WF-LESSONS-001`.** Tells Claude to append a terse lesson to
+  `.clawness/memory.md` immediately when asked to "remember" something, or on the
+  *second* occurrence of a mistake/gotcha otherwise — keeping entries short and
+  deduplicated, and reading the log before repeating work in an area it covers.
+
+### Fixed
+- **git-presence check no longer false-alarms on workspace/monorepo parents.**
+  `git rev-parse` only searches upward, so opening a parent folder whose actual
+  repositories live in subfolders made `git_check` wrongly report "not under
+  version control". It now also does a bounded downward scan (depth ≤ 4, capped
+  dir count, skipping `node_modules`/`.venv`/build dirs and other vendored trees)
+  so a tree that does use git isn't flagged.
+
 ## [0.3.0] - 2026-06-28
 
 ### Fixed
