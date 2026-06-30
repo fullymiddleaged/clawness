@@ -5,6 +5,25 @@ All notable changes to Clawness will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.1] - 2026-06-30
+
+### Changed
+- **Hard `deny` reserved for the unrecoverable; dual-use actions downgraded to `ask`.**
+  Confirmed empirically that a PreToolUse `deny` is a hard block with **no in-Claude
+  override** on the VS Code build (retrying re-fires it; the user gets no inline
+  approve). So **pipe-to-shell (`curl … | sh`) and `git push --force` now `ask`
+  instead of `deny`** — both are dangerous but routinely legitimate (official
+  installers, rebased branches), and `ask` surfaces a real approve dialog;
+  hard-denying them only trained users to disable the guard. Hard `deny` now covers
+  only the ~zero-legit-use / exfil-signature set: cloud-metadata, catastrophic
+  `rm -rf`, credential-read-plus-network, and data-upload to a host absent from the
+  codebase.
+- **Truthful deny text + louder prompts.** The `deny` reason no longer tells the model
+  to "proceed on confirmation" (it can't); it states the block is hard and names the
+  real escape hatches (run it yourself in a terminal, or `CLAW_NO_ACCESS_GUARD=1` for
+  the session). Both `deny` and `ask` prompts now lead with a 🛑 / ⚠️ banner for
+  at-a-glance visibility.
+
 ## [0.5.0] - 2026-06-30
 
 ### Added

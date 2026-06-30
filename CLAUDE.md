@@ -37,10 +37,17 @@ dependency**. No ML models, no services, no Docker.
    - `hooks/access_guard.py` (PreToolUse; logic in `clawness/guard.py`) classifies each
      Bash/Write/Edit/Read call → `allow`/`ask`/`deny`. A hook decision overrides the
      user's permission allowlist, so `ask` fires *even on "always-allowed" tools* — the
-     answer to approval fatigue. **Deny** the clearly-malicious (pipe-to-shell,
-     cloud-metadata, cred-read+network, catastrophic `rm -rf`, `git push --force`);
-     **ask** writes outside the project root (temp/plan files exempt via `is_plan_file`),
-     credential-shaped reads, and named installs. Data-bearing network egress is
+     answer to approval fatigue. **`deny` is a HARD block with no in-Claude override**
+     (verified on the VS Code build — the user can't approve it inline; retrying re-fires),
+     so reserve it for ~zero-legit-use / exfil-signature cases: cloud-metadata,
+     catastrophic `rm -rf`, cred-read+network, and data-upload to a host absent from the
+     codebase. **`ask`** (which DOES surface an approve dialog) covers the dual-use and
+     scope cases: pipe-to-shell and `git push --force` (dangerous but routinely legit —
+     hard-denying them just trains users to disable the guard), writes outside the project
+     root (temp/plan files exempt via `is_plan_file`), credential-shaped reads, and named
+     installs. The `_deny` reason text must not tell the model to "proceed on
+     confirmation" — it can't; it points to the real escape hatches (run it yourself /
+     `CLAW_NO_ACCESS_GUARD=1`). Data-bearing network egress is
      **provenance-tiered**: `value_in_project` searches the destination host across the
      project's own text files — a bounded walk that EXCLUDES `.claude/` so a hijacked
      skill can't launder a host into "trusted" — absent everywhere → deny (exfil

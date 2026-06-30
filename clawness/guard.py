@@ -171,15 +171,19 @@ _SCP_HOST_RE = re.compile(r"(?:^|[\s'\"])[A-Za-z0-9._-]+@([A-Za-z0-9.-]+):")
 # --- reasons (shown to the user in the permission dialog) -----------------
 def _deny(why: str) -> str:
     return (
-        f"Clawness access guard blocked this — {why}. This is a common "
-        "exfiltration/destruction pattern. If it is genuinely intended, tell the "
-        "user what you want to run and why, and proceed only on their explicit "
-        "confirmation. (Disable the guard with CLAW_NO_ACCESS_GUARD=1.)"
+        f"\U0001f6d1 BLOCKED BY CLAWNESS — {why}. This is a HARD block with no "
+        "in-Claude override — retrying just re-triggers it. If you genuinely intend "
+        "this, the user must run it themselves in a terminal, or set "
+        "CLAW_NO_ACCESS_GUARD=1 for the session and re-issue. For the catastrophic / "
+        "exfiltration cases this guards, the safe answer is usually not to."
     )
 
 
 def _ask(why: str) -> str:
-    return f"Clawness access guard: {why} — confirm this is intended."
+    return (
+        f"⚠️  CLAWNESS — CONFIRM THIS IS INTENDED: {why}. Flagged even though "
+        "the tool may be allow-listed; approve only if you expected this."
+    )
 
 
 # --- small path helpers ---------------------------------------------------
@@ -353,17 +357,24 @@ def _classify_bash(tool_input: dict, root: Path) -> tuple[str, str]:
     if not cmd.strip():
         return (ALLOW, "")
 
-    # --- hard denies (high signal, conservative) ---
-    if _PIPE_TO_SHELL_RE.search(cmd):
-        return (DENY, _deny("it downloads code from the network and pipes it straight into a shell"))
+    # --- hard denies: ~zero legitimate dev use, or the exfil signature ---
+    # (deny has NO in-Claude override on the VS Code build — keep this set to
+    # things a user would essentially never want pushed through by a sleepy "yes".)
     if _METADATA_RE.search(cmd):
         return (DENY, _deny("it contacts a cloud instance-metadata endpoint (credential theft vector)"))
     if _RM_CATASTROPHIC_RE.search(cmd):
         return (DENY, _deny("it recursively deletes a filesystem root, home, or system directory"))
-    if _FORCE_PUSH_RE.search(cmd):
-        return (DENY, _deny("it force-pushes (history rewrite); use --force-with-lease and confirm with the user"))
     if _NETWORK_RE.search(cmd) and _CRED_REF_RE.search(cmd):
         return (DENY, _deny("it references a credential/secret file in a command that also touches the network"))
+
+    # --- dual-use: dangerous but routinely legitimate → ask (approvable) ---
+    # Pipe-to-shell is how most official installers run (curl … | sh); a force-push
+    # is normal on rebased branches. A hard deny would just train users to disable
+    # the guard, so surface an approve prompt instead.
+    if _PIPE_TO_SHELL_RE.search(cmd):
+        return (ASK, _ask("running a script piped straight from the network into a shell — fine for a trusted installer, risky otherwise"))
+    if _FORCE_PUSH_RE.search(cmd):
+        return (ASK, _ask("a force-push that rewrites remote history — prefer --force-with-lease"))
 
     # Reading a credential store OUTSIDE the project (e.g. cat ~/.ssh/id_rsa) — the
     # Read-tool gate is bypassable via Bash, so cover it here. In-project secret

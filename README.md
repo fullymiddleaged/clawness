@@ -303,6 +303,21 @@ clawness plan approve   # manual override (headless / no plan mode)
 
 **Stack awareness:** at session start Clawness detects your project's stack from its files (the same detection as `clawness init`) and injects a one-line note — e.g. *"Detected project stack: Python, FastAPI, SQL"* — so Claude starts already knowing the ecosystem instead of inferring it. It's a heuristic, stated as such, and complements the per-prompt rule retrieval. Silence it with `CLAW_NO_STACK_NOTE=1`.
 
+### Session Security (access guard + trust ledger, on by default)
+
+Two SessionStart/PreToolUse hooks defend the *session itself* against the agent's own tool calls — prompt-injection that makes Claude exfiltrate or destroy, a hijacked skill, or approval-fatigue autopilot. They're independent of the rule engine and add ~0 tokens unless they fire.
+
+**Access guard** (`PreToolUse`). Classifies each Bash/Write/Edit/Read call and, for the risky subset, forces a decision — *even when you've allow-listed the tool*, since a hook decision overrides the permission allowlist. That's the point: it breaks the "click approve on everything" reflex. Two outcomes:
+
+- **`ask`** — surfaces a confirmation prompt you can approve or reject. Used for *dual-use* and scope cases: pipe-to-shell (`curl … | sh`, like official installers), `git push --force`, writes **outside** the project root, reads of credential files **outside** the project (`~/.ssh`, `~/.aws`, another repo), named package installs, and editing the guard's own config. Asked at most once per target per session.
+- **`deny`** — a **hard block** with no inline override (verified on the VS Code build: retrying just re-fires it). Reserved for the things you'd essentially never want a sleepy "yes" to push through: cloud-metadata endpoints, catastrophic `rm -rf /`, reading a secret file into a network command, and uploading data to a host that appears **nowhere** in your codebase (the exfil signature). To proceed past a deny you run it yourself in a terminal, or set `CLAW_NO_ACCESS_GUARD=1` and re-issue.
+
+It is tuned to **stay out of normal dev work**: reading your *own* project's `.env`/keys, hardcoding a host in source, and calling your own APIs are never prompted. Only reaching *outside* the project for secrets, *sending* data to an unrecognized host, or touching the guard's kill-switches trips anything. See the [tripwire caveat](#what-problem-does-this-solve) — it's harm reduction, not a sandbox.
+
+**Trust ledger** (`SessionStart`). Fingerprints your project's skills, agents, commands, and MCP servers (TOFU) and injects a note when one **appears or changes** between sessions, so a silently-swapped skill doesn't go unnoticed. `clawness audit-skills` scans those artifacts for prompt-injection tells on demand.
+
+**Opt-outs:** `CLAW_NO_ACCESS_GUARD=1` and `CLAW_NO_TRUST_LEDGER=1`.
+
 ---
 
 ## Per-Project Setup
