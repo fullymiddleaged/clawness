@@ -33,15 +33,34 @@ dependency**. No ML models, no services, no Docker.
    auto-created on first session by `hooks/memory_init.py` (SessionStart) — gated to
    git work trees, opt-out `CLAW_NO_MEMORY`; it injects a note (like `git_check`) so
    Claude announces the file to the user, since hooks can't prompt directly.
+4. **Session security** (defense, not retrieval — independent of the engine):
+   - `hooks/access_guard.py` (PreToolUse; logic in `clawness/guard.py`) classifies each
+     Bash/Write/Edit/Read call → `allow`/`ask`/`deny`. A hook decision overrides the
+     user's permission allowlist, so `ask` fires *even on "always-allowed" tools* — the
+     answer to approval fatigue. **Deny** the clearly-malicious (pipe-to-shell,
+     cloud-metadata, cred-read+network, catastrophic `rm -rf`, `git push --force`);
+     **ask** writes outside the project root (temp/plan files exempt via `is_plan_file`),
+     credential-shaped reads, and named installs. Data-bearing network egress is
+     **provenance-tiered**: `value_in_project` searches the destination host across the
+     project's own text files — a bounded walk that EXCLUDES `.claude/` so a hijacked
+     skill can't launder a host into "trusted" — absent everywhere → deny (exfil
+     signature), known/unverifiable → ask. Asks once per target/session
+     (`.clawness/guard_sessions.json`). Pure-logic core, fails open, `CLAW_NO_ACCESS_GUARD`.
+   - `hooks/trust_ledger.py` (SessionStart; logic in `clawness/trust.py`) keeps TOFU
+     fingerprints of skills/agents/commands/MCP servers in `.clawness/trust_ledger.json`
+     and injects a note when one changed/appeared; `clawness audit-skills` scans those
+     artifacts for injection tells. Fails open, `CLAW_NO_TRUST_LEDGER`.
 
 ## Key files
 - `clawness/core.py` — engine (rules loader, tokenizer + `_CONCEPT_GROUPS`, BM25,
   TF-IDF, RRF, `Clawness` class, `rank_ids`, rendering, `render_memory_block`).
-- `clawness/cli.py` — `clawness` CLI: query, stats, lint, bench, eval, init, plan, agents-md.
+- `clawness/cli.py` — `clawness` CLI: query, stats, lint, bench, eval, init, plan, agents-md, audit-skills.
 - `clawness/plan.py` — plan-gate logic (`gate_decision`, `is_plan_file`, session approval).
-- `hooks/` — runtime hooks (`claude_hook`, `compress_output`, `plan_gate`, `git_check`,
-  `memory_init`, `stack_detect`, `ensure_deps`) + setup helpers (`setup_settings/agents/skills` — manual install only).
-- `rules/<domain>/*.yml` — the corpus (115 rules / 18 domains; `_mandatory/` = always-on).
+- `clawness/guard.py` — access-guard logic (`classify_tool_call`, `value_in_project`, ask-ledger).
+- `clawness/trust.py` — trust-ledger logic (`scan_artifacts`, `diff_ledger`, `scan_injection_tells`).
+- `hooks/` — runtime hooks (`claude_hook`, `compress_output`, `plan_gate`, `access_guard`,
+  `trust_ledger`, `git_check`, `memory_init`, `stack_detect`, `ensure_deps`) + setup helpers (`setup_settings/agents/skills` — manual install only).
+- `rules/<domain>/*.yml` — the corpus (117 rules / 18 domains; `_mandatory/` = always-on).
 - `agents/*.md`, `skills/<name>/SKILL.md` — auto-discovered by the plugin.
 - `.claude-plugin/{plugin.json,marketplace.json}` — plugin + marketplace manifests.
 - `tests/ground_truth.json` — labeled eval queries (grow it when adding rule areas).
@@ -66,6 +85,18 @@ dependency**. No ML models, no services, no Docker.
   CLI — plugin users verify via `/clawness:status`.
 - **Naming:** package `clawness`, env vars `CLAW_*`, project dir `.clawness/`. (The
   `infinri/Writ` mentions in README are upstream credit — leave them.)
+- **The access guard is a harm-reduction tripwire, not a security boundary.** It is
+  regex/heuristics over tool inputs the agent controls, so a determined adversary can
+  obfuscate around it (`| base64 -d | sh`, download-then-exec, `python -c`, token
+  munging). It exists to catch *honest mistakes and low-effort/​injected attacks* and
+  to break approval-fatigue autopilot — not to sandbox a hostile agent. The real
+  boundary is the deferred devcontainer + egress allowlist; keep that framing in the
+  docs so users don't over-trust it. **Design rule: never nag normal dev work.**
+  In-project secret reads and hardcoded/​endogenous values are allowed silently; only
+  reaching for secrets *outside* the project, *sending* data to a host absent from the
+  codebase, or editing the guard's own kill-switch files (`_is_control_file`) trips a
+  prompt. When tightening detection, widen DENY conservatively (a false deny blocks
+  real work) and prefer ASK.
 
 ## Dev workflow
 - Test: `python -m pytest tests/` (set `CLAW_NO_PLAN_GATE=1` if the gate blocks your

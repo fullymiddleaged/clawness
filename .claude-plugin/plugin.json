@@ -1,7 +1,7 @@
 {
   "name": "clawness",
-  "version": "0.4.0",
-  "description": "A Claude Code plugin that puts the right coding rules in context on every prompt, automatically. 115 rules across 18 domains, per-prompt rule injection (BM25 + TF-IDF + RRF + concept expansion, pure Python), a per-codebase lessons-learned memory injected every turn, Bash-output compression, adversarial review sub-agents, slash commands, and a default-on (opt-out) plan-approval gate. No Docker, no services, no ML models. Requires Python 3.10+ on PATH; on first session a background hook installs PyYAML (the only dependency) into your environment.",
+  "version": "0.5.0",
+  "description": "A Claude Code plugin that puts the right coding rules in context on every prompt, automatically. 117 rules across 18 domains, per-prompt rule injection (BM25 + TF-IDF + RRF + concept expansion, pure Python), a per-codebase lessons-learned memory injected every turn, Bash-output compression, adversarial review sub-agents, slash commands, a default-on (opt-out) plan-approval gate, and session security hardening (an access guard that forces a prompt on likely exfiltration/destructive tool calls, and a trust ledger that flags changed skills/agents). No Docker, no services, no ML models. Requires Python 3.10+ on PATH; on first session a background hook installs PyYAML (the only dependency) into your environment.",
   "author": {
     "name": "fullymiddleaged"
   },
@@ -57,6 +57,15 @@
             "timeout": 10
           }
         ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "for p in python3 python py; do command -v \"$p\" >/dev/null 2>&1 && exec \"$p\" \"${CLAUDE_PLUGIN_ROOT}/hooks/trust_ledger.py\"; done",
+            "timeout": 10
+          }
+        ]
       }
     ],
     "UserPromptSubmit": [
@@ -99,6 +108,16 @@
           {
             "type": "command",
             "command": "for p in python3 python py; do command -v \"$p\" >/dev/null 2>&1 && exec \"$p\" \"${CLAUDE_PLUGIN_ROOT}/hooks/plan_gate.py\"; done",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "Bash|Write|Edit|MultiEdit|NotebookEdit|Read",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "for p in python3 python py; do command -v \"$p\" >/dev/null 2>&1 && exec \"$p\" \"${CLAUDE_PLUGIN_ROOT}/hooks/access_guard.py\"; done",
             "timeout": 10
           }
         ]

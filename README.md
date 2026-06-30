@@ -2,7 +2,7 @@
 
 **Install once. Works everywhere. Your AI coding agent gets the right rules for every task — automatically.**
 
-Clawness is a Claude Code plugin that puts the right coding rules in context on every prompt, automatically. It ships 114 coding rules across 18 domains, 7 adversarial review sub-agents, output compression, and a default-on plan-approval gate — all in under 1 MB with zero infrastructure. You install it once, and it silently injects the relevant rules into every Claude Code session across every project on your machine.
+Clawness is a Claude Code plugin that puts the right coding rules in context on every prompt, automatically. It ships 117 coding rules across 18 domains, 7 adversarial review sub-agents, output compression, a default-on plan-approval gate, and session security hardening (access guard + trust ledger) — all in under 1 MB with zero infrastructure. You install it once, and it silently injects the relevant rules into every Claude Code session across every project on your machine.
 
 Inspired by [infinri/Writ](https://github.com/infinri/Writ), rebuilt from ~2GB of infrastructure to pure Python.
 
@@ -44,12 +44,15 @@ Without Clawness, you either:
 - **Remember to mention rules manually** → you forget, Claude forgets
 
 With Clawness:
-- **115 rules live in YAML files**, organized by domain
+- **117 rules live in YAML files**, organized by domain
 - **A hook fires on every prompt**, retrieves only the rules relevant to your current task (under a millisecond on the lexical path)
 - **Mandatory rules** (security, testing) appear on every turn, non-negotiably
 - **Ranked rules** (Next.js patterns, React hooks, FastAPI conventions) appear only when relevant
 - **Output compression** strips noise from long bash output so Claude's context stays clean
 - **Adversarial sub-agents** (security red/blue team, code critic, architecture challenger) are available for deeper review
+- **Session security** — an access guard that forces a confirmation prompt on likely-exfiltration or destructive tool calls *even when the tool is allow-listed* (defeating approval fatigue), and a trust ledger that warns when a skill/agent/MCP server changes between sessions
+
+> **What the access guard is — and isn't.** It's a *harm-reduction tripwire*, not a sandbox. It catches honest mistakes, copy-pasted `curl … | sh`, careless out-of-project writes, secret-reads outside your repo, and data sent to hosts that appear nowhere in your codebase — and it breaks approval-fatigue autopilot. It is heuristics over commands the agent controls, so a determined adversary can obfuscate around it; the real boundary is running Claude Code in a container with an egress allowlist. By design it **stays out of the way of normal work**: reading your own project's `.env`, hardcoding hosts in source, and calling your APIs are never prompted — only reaching *outside* the project for secrets, *sending* data to unknown hosts, or editing the guard's own config trips a prompt. Disable it any time with `CLAW_NO_ACCESS_GUARD=1`.
 
 ---
 
@@ -530,11 +533,11 @@ clawness --rules-dir /path/to/rules stats
 
 | Component | Count | Purpose |
 |-----------|-------|---------|
-| **Rules** | 114 across 18 domains | Coding standards, injected per-prompt |
+| **Rules** | 117 across 18 domains | Coding standards, injected per-prompt |
 | **Agents** | 7 sub-agents | Security red/blue team, code critic, test writer, perf auditor, refactor advisor, architecture challenger |
 | **Skills** | 6 slash commands | `/clawness:audit`, `/clawness:review`, `/clawness:test`, `/clawness:perf`, `/clawness:add`, `/clawness:status` |
-| **Hooks** | 5 (rule injection, output compression, plan gate, git check, dependency bootstrap) | Automatic context management & workflow enforcement |
-| **CLI** | 8 commands | query, init, stats, lint, bench, eval, plan, agents-md |
+| **Hooks** | 7 (rule injection, output compression, plan gate, access guard, trust ledger, git check, dependency bootstrap) | Automatic context management, workflow enforcement & session security |
+| **CLI** | 9 commands | query, init, stats, lint, bench, eval, plan, agents-md, audit-skills |
 | **Installers** | bash + PowerShell (with matching uninstallers) | 7-step setup for Windows, macOS, Linux |
 | **Plugin manifest** | marketplace + plugin | For `claude plugin install` |
 
@@ -555,13 +558,13 @@ clawness --rules-dir /path/to/rules stats
 | `go` | 5 | Error handling, nil maps, context, goroutine lifecycle, data races |
 | `rust` | 5 | unwrap/expect, error handling, clone, unsafe, iterators |
 | `sql` | 5 | N+1 queries, indexes, transactions, `SELECT *`, migrations |
-| `security` | 5 | XSS, SQLi, auth, secrets, deps *(mandatory)* |
+| `security` | 7 | XSS, SQLi, auth, secrets, deps, untrusted-content/exfil *(6 mandatory)*; package supply-chain hardening *(ranked)* |
 | `react` | 4 | Hooks, state management, list keys, forms |
 | `typescript` | 4 | Null safety, async errors, strict mode, Zod |
 | `bash` | 4 | Strict mode, quoting, error checking, shellcheck |
 | `testing` | 1 | Test coverage for new code *(mandatory)* |
 
-The 7 **mandatory** rules (always injected) are the 5 `security` rules, the 1 `testing` rule, and 1 current-practices rule (counted under `general`).
+The 8 **mandatory** rules (always injected) are the 6 `security` rules, the 1 `testing` rule, and 1 current-practices rule (counted under `general`).
 
 ---
 
@@ -583,6 +586,8 @@ The 7 **mandatory** rules (always injected) are the 5 `security` rules, the 1 `t
 | `CLAW_VERBOSE` | (unset) | Render mandatory rules in full (`WHEN`/`BAD`/`GOOD`) instead of compact — more tokens per turn |
 | `CLAW_COMPACT` | (unset) | Also render ranked rules compactly (directive only) — fewer tokens per turn |
 | `CLAW_NO_PLAN_GATE` | (unset) | Disable the plan gate globally |
+| `CLAW_NO_ACCESS_GUARD` | (unset) | Disable the access guard (the PreToolUse exfil/destructive-action prompt) |
+| `CLAW_NO_TRUST_LEDGER` | (unset) | Don't fingerprint skills/agents/MCP or warn when they change |
 | `CLAW_NO_GIT_CHECK` | (unset) | Stop offering to `git init` when a project isn't under version control |
 | `CLAUDE_CONFIG_DIR` | `~/.claude` | Claude Code's config dir — the installer/uninstaller follow it if you've relocated it |
 | `CLAUDE_CODE_SUBAGENT_MODEL` | (none) | Override model for ALL sub-agents |
@@ -680,7 +685,7 @@ effort: max         # maximum reasoning — expensive, use sparingly
 | | Writ | Clawness | CLAUDE.md |
 |---|---|---|---|
 | Rule selection | Hybrid RAG (BM25 + vector + graph) | Hybrid (BM25 + TF-IDF + RRF + concepts) | All rules, every turn |
-| Token cost per turn | selected rules only | ~1,300/turn (~470 mandatory + ~5 selected) | all 115 rules (~13k+) every turn |
+| Token cost per turn | selected rules only | ~1,300/turn (~470 mandatory + ~5 selected) | all 117 rules (~13k+) every turn |
 | Infrastructure | Neo4j + Docker + ONNX (~2 GB) | PyYAML (~200 KB) | None |
 | Install time | ~5 minutes | ~5 seconds | Copy/paste |
 | Mandatory rules | Yes | Yes | Manual discipline |

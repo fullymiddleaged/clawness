@@ -285,6 +285,51 @@ def cmd_agents(args: argparse.Namespace) -> None:
         print(AGENTS_MD_TEMPLATE)
 
 
+def cmd_audit_skills(args: argparse.Namespace) -> None:
+    """Audit context-injected artifacts (skills, sub-agents, slash-commands, MCP
+    servers) for prompt-injection / exfil tells, and print their fingerprints.
+
+    A hit is advisory, not proof — a security skill may legitimately mention
+    `curl` or `.env`. Exits 1 if any tells are found so CI can gate on it."""
+    from .plan import find_project_root
+    from .trust import scan_artifacts, scan_injection_tells
+
+    root = find_project_root(Path(args.project))
+    artifacts = scan_artifacts(root)
+    if not artifacts:
+        print(f"No skills/agents/commands/MCP servers found under {root / '.claude'}.")
+        return
+
+    findings = 0
+    for key, digest in sorted(artifacts.items()):
+        short = digest[:12]
+        if key.endswith("#mcpServers"):
+            # A config block, not a file body — list it; its presence is the signal.
+            print(f"  {key}  [{short}]  (MCP servers declared — review the endpoints)")
+            continue
+        path = root / key
+        try:
+            text = path.read_text(encoding="utf-8", errors="ignore")
+        except OSError as e:
+            print(f"  {key}  [{short}]  - unreadable ({e.__class__.__name__})")
+            continue
+        tells = scan_injection_tells(text)
+        if tells:
+            findings += len(tells)
+            print(f"  {key}  [{short}]")
+            for t in tells:
+                print(f"    - {t}")
+        else:
+            print(f"  {key}  [{short}]  ok")
+
+    total = len(artifacts)
+    if findings == 0:
+        print(f"\nAudited {total} artifact(s); no injection tells found.")
+    else:
+        print(f"\n{findings} injection tell(s) across {total} artifact(s) — review the diffs above.")
+        sys.exit(1)
+
+
 def cmd_eval(args: argparse.Namespace) -> None:
     """Measure retrieval quality against a labeled ground-truth set.
     Reports MRR@k and hit-rate; fails (exit 1) if below the given floors."""
@@ -374,6 +419,13 @@ def main() -> None:
     p_eval.add_argument("--floor-mrr", type=float, default=None, help="Fail if MRR below this")
     p_eval.add_argument("--floor-hit", type=float, default=None, help="Fail if hit-rate below this")
 
+    # audit-skills (TOFU integrity: scan context-injected artifacts)
+    p_audit = sub.add_parser(
+        "audit-skills",
+        help="Audit skills/agents/commands/MCP for injection tells + print fingerprints",
+    )
+    p_audit.add_argument("--project", default=".", help="Project directory (default: cwd)")
+
     # init
     p_init = sub.add_parser("init", help="Scan project and suggest rule domains")
     p_init.add_argument("project_dir", nargs="?", default=".", help="Project directory to scan")
@@ -411,6 +463,7 @@ def main() -> None:
             "lint": cmd_lint,
             "bench": cmd_bench,
             "eval": cmd_eval,
+            "audit-skills": cmd_audit_skills,
         }[args.command](args)
 
 
